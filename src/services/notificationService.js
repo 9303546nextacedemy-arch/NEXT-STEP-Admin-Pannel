@@ -3,6 +3,8 @@ import {
   collection, 
   addDoc, 
   getDocs, 
+  doc,
+  deleteDoc,
   query, 
   orderBy, 
   serverTimestamp 
@@ -57,6 +59,16 @@ export const notificationService = {
       }));
     } catch (error) {
       console.error("Error getting notifications: ", error);
+      throw error;
+    }
+  },
+
+  deleteNotification: async (id) => {
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+      return true;
+    } catch (error) {
+      console.error("Error deleting notification: ", error);
       throw error;
     }
   },

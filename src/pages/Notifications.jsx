@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Send, Bell, Info, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Send, Bell, Info, AlertCircle, CheckCircle, Loader2, Trash2 } from 'lucide-react';
 import { notificationService } from '../services/notificationService';
 import { courseService } from '../services/courseService';
 
@@ -13,17 +13,45 @@ const Notifications = () => {
   const [selectedCourseIds, setSelectedCourseIds] = useState([]);
   const [deepLinkMode, setDeepLinkMode] = useState('notifications');
   const [deepLinkCustom, setDeepLinkCustom] = useState('');
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await courseService.getAllCourses();
-        setCourses(data);
-      } catch (e) {
-        console.error(e);
-      }
-    })();
+    loadData();
+    loadHistory();
   }, []);
+
+  const loadData = async () => {
+    try {
+      const data = await courseService.getAllCourses();
+      setCourses(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const data = await notificationService.getAllNotifications();
+      setHistory(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this notification? It will be removed from all student apps.')) return;
+    try {
+      await notificationService.deleteNotification(id);
+      setHistory(prev => prev.filter(n => n.id !== id));
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete notification');
+    }
+  };
 
   const resolveDeepLink = () => {
     if (deepLinkMode === 'custom') {
@@ -58,6 +86,7 @@ const Notifications = () => {
       setSelectedCourseIds([]);
       setDeepLinkMode('notifications');
       setDeepLinkCustom('');
+      loadHistory();
     } catch (error) {
       console.error(error);
       alert('Failed to send notification');
@@ -229,6 +258,80 @@ const Notifications = () => {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      {/* History Section */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-premium overflow-hidden">
+        <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Notification History</h2>
+            <p className="text-sm text-gray-500">View and manage previously sent announcements.</p>
+          </div>
+          <button 
+            onClick={loadHistory}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+            title="Refresh history"
+          >
+            <Loader2 className={loadingHistory ? "animate-spin" : ""} size={20} />
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
+              <tr>
+                <th className="px-8 py-4">Notification</th>
+                <th className="px-8 py-4">Target</th>
+                <th className="px-8 py-4">Date</th>
+                <th className="px-8 py-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {history.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="px-8 py-12 text-center text-gray-400">
+                    {loadingHistory ? 'Loading history...' : 'No notifications sent yet.'}
+                  </td>
+                </tr>
+              ) : (
+                history.map((n) => (
+                  <tr key={n.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-8 py-5">
+                      <div className="font-bold text-gray-900 line-clamp-1">{n.title}</div>
+                      <div className="text-sm text-gray-500 line-clamp-2 mt-0.5">{n.message}</div>
+                      {n.type && (
+                        <span className={`inline-block mt-2 px-2 py-0.5 text-[10px] font-bold rounded uppercase ${
+                          n.type === 'alert' ? 'bg-rose-100 text-rose-600' :
+                          n.type === 'warning' ? 'bg-amber-100 text-amber-600' :
+                          n.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
+                          'bg-blue-100 text-blue-600'
+                        }`}>
+                          {n.type}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className="text-sm font-medium text-gray-700">
+                        {n.targetType === 'all' ? 'All Students' : `${n.targetCourseIds?.length || 0} Batches`}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-sm text-gray-500">
+                      {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <button 
+                        onClick={() => handleDelete(n.id)}
+                        className="p-2 text-gray-400 hover:text-rose-500 transition-colors"
+                        title="Delete notification"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

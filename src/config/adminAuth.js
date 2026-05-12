@@ -1,7 +1,11 @@
-/** Only this Google account may use the admin panel. */
-export const ALLOWED_ADMIN_EMAIL = '9303546nextacedemy@gmail.com';
+/** These Google accounts may use the admin panel. */
+export const ALLOWED_ADMIN_EMAILS = [
+  '9303546nextacedemy@gmail.com',
+  '97487787lecnextstepyt@gmail.com'
+];
 
 export function isAllowedAdminEmail(email) {
   if (!email || typeof email !== 'string') return false;
-  return email.trim().toLowerCase() === ALLOWED_ADMIN_EMAIL.toLowerCase();
+  const lower = email.trim().toLowerCase();
+  return ALLOWED_ADMIN_EMAILS.some(e => e.toLowerCase() === lower);
 }
