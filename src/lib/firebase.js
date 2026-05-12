@@ -3,14 +3,21 @@ import { getAuth, GoogleAuthProvider, signInAnonymously } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
+/** Vite: set VITE_FIREBASE_* on Vercel (or .env locally). Fallbacks match the default web app for this project. */
+function env(name, fallback) {
+  const v = import.meta.env[name];
+  if (v == null || String(v).trim() === "") return fallback;
+  return String(v).trim();
+}
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCUzsW6CM7s9KgGTn7ihdfHDnIhkjnQcvk",
-  authDomain: "next-step-academy-5b9ab.firebaseapp.com",
-  projectId: "next-step-academy-5b9ab",
-  storageBucket: "next-step-academy-5b9ab.firebasestorage.app",
-  messagingSenderId: "546747081697",
-  appId: "1:546747081697:web:6c3ba5a0cd2542631fa8a0",
-  measurementId: "G-FP5Z6XRRSF"
+  apiKey: env("VITE_FIREBASE_API_KEY", "AIzaSyCUzsW6CM7s9KgGTn7ihdfHDnIhkjnQcvk"),
+  authDomain: env("VITE_FIREBASE_AUTH_DOMAIN", "next-step-academy-5b9ab.firebaseapp.com"),
+  projectId: env("VITE_FIREBASE_PROJECT_ID", "next-step-academy-5b9ab"),
+  storageBucket: env("VITE_FIREBASE_STORAGE_BUCKET", "next-step-academy-5b9ab.firebasestorage.app"),
+  messagingSenderId: env("VITE_FIREBASE_MESSAGING_SENDER_ID", "546747081697"),
+  appId: env("VITE_FIREBASE_APP_ID", "1:546747081697:web:6c3ba5a0cd2542631fa8a0"),
+  measurementId: env("VITE_FIREBASE_MEASUREMENT_ID", "G-FP5Z6XRRSF"),
 };
 
 // Initialize Firebase

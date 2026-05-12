@@ -5,9 +5,11 @@ import { Loader2 } from 'lucide-react';
 
 const Login = ({ authError, clearAuthError }) => {
   const [busy, setBusy] = useState(false);
+  const [signInErr, setSignInErr] = useState('');
 
   const handleGoogleSignIn = async () => {
     clearAuthError?.();
+    setSignInErr('');
     setBusy(true);
     try {
       await signInWithPopup(auth, googleProvider);
@@ -16,7 +18,17 @@ const Login = ({ authError, clearAuthError }) => {
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
         return;
       }
-      alert(err?.message || 'Google sign-in failed.');
+      if (code === 'auth/unauthorized-domain') {
+        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+        setSignInErr(
+          `Firebase ne is domain ko allow nahi kiya (Vercel variables se yeh fix nahi hota).\n\n` +
+            `Firebase Console → project "next-step-academy-5b9ab" → Authentication → Settings → Authorized domains → Add domain:\n` +
+            `${host || 'next-step-admin-pannel.vercel.app'}\n\n` +
+            `Save karke 1–2 min baad yahan dubara try karein.`
+        );
+        return;
+      }
+      setSignInErr(err?.message || 'Google sign-in failed.');
     } finally {
       setBusy(false);
     }
@@ -44,6 +56,12 @@ const Login = ({ authError, clearAuthError }) => {
           {authError ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-sm px-4 py-3">
               {authError}
+            </div>
+          ) : null}
+
+          {signInErr ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-950 text-sm px-4 py-3 whitespace-pre-wrap">
+              {signInErr}
             </div>
           ) : null}
 
