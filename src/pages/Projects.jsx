@@ -1,70 +1,28 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { Plus, Search, CheckCircle, XCircle, Trash2, Loader2, Edit3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, CheckCircle, XCircle, Trash2, Loader2, Edit3, Globe, Phone, BookOpen, Layers } from 'lucide-react';
 import { projectService } from '../services/projectService';
-import { courseService } from '../services/courseService';
-
-const mkId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-const PROJECT_THEME_PRESETS = ['#C8A951', '#0B2C5F', '#2563EB', '#7C3AED', '#DC2626', '#059669', '#EA580C'];
 
 const defaultFormData = () => ({
   title: '',
   shortDescription: '',
-  fullDescription: '',
+  overview: '',
+  domain: '',
   themeColor: '#C8A951',
   isActive: true,
-  allowedCourses: [],
-  projectContent: [],
 });
 
-const normalizeProjectContent = (raw) => {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((s) => ({
-      id: String(s.id || mkId('sub')),
-      title: String(s.title || '').trim(),
-      details: String(
-        s.details ||
-        (Array.isArray(s.chapters) && s.chapters[0]?.details) ||
-        (Array.isArray(s.chapters) && s.chapters[0]?.fullDescription) ||
-        ''
-      ).trim(),
-      chapters: [],
-    }))
-    .filter((s) => s.title);
-};
-
-const firstContentSummary = (project) => {
-  const content = normalizeProjectContent(project?.projectContent);
-  const firstSubject = content[0];
-  return {
-    subject: project?.category || firstSubject?.title || 'General',
-    chapter: 'Direct Subject Details',
-  };
-};
+const PROJECT_THEME_PRESETS = ['#C8A951', '#0B2C5F', '#2563EB', '#7C3AED', '#DC2626', '#059669', '#EA580C'];
 
 const Projects = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projects, setProjects] = useState([]);
-  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProject, setEditingProject] = useState(null);
   const [formData, setFormData] = useState(defaultFormData());
-  const [selectedSubjectId, setSelectedSubjectId] = useState('');
-  const [newSubjectTitle, setNewSubjectTitle] = useState('');
 
   useEffect(() => {
     fetchProjects();
-    fetchCourses();
   }, []);
-
-  const fetchCourses = async () => {
-    try {
-      const data = await courseService.getAllCourses();
-      setCourses(data);
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-    }
-  };
 
   const fetchProjects = async () => {
     try {
@@ -81,20 +39,11 @@ const Projects = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const projectContent = normalizeProjectContent(formData.projectContent);
-      if (projectContent.length === 0) {
-        alert('Add at least one subject.');
-        return;
-      }
-      const firstSubject = projectContent[0];
+      setLoading(true);
       const payload = {
         ...formData,
-        projectContent,
-        category: firstSubject?.title || '',
-        chapter: '',
-        fullDescription: formData.fullDescription || firstSubject?.details || '',
       };
-      setLoading(true);
+      
       if (editingProject) {
         await projectService.updateProject(editingProject.id, payload);
       } else {
@@ -112,36 +61,19 @@ const Projects = () => {
 
   const resetForm = () => {
     setFormData(defaultFormData());
-    setSelectedSubjectId('');
-    setNewSubjectTitle('');
     setEditingProject(null);
   };
 
   const handleEdit = (project) => {
-    const projectContent =
-      normalizeProjectContent(project.projectContent).length > 0
-        ? normalizeProjectContent(project.projectContent)
-        : [
-            {
-              id: mkId('sub'),
-              title: project.category || 'General',
-              details: project.fullDescription || '',
-              chapters: [],
-            },
-          ];
-
     setEditingProject(project);
     setFormData({
-      title: project.title,
+      title: project.title || '',
       shortDescription: project.shortDescription || '',
-      fullDescription: project.fullDescription || '',
+      overview: project.overview || '',
+      domain: project.domain || '',
       themeColor: project.themeColor || '#C8A951',
-      isActive: project.isActive,
-      allowedCourses: project.allowedCourses || [],
-      projectContent,
+      isActive: project.isActive !== undefined ? project.isActive : true,
     });
-    setSelectedSubjectId(projectContent[0]?.id || '');
-    setNewSubjectTitle('');
     setIsModalOpen(true);
   };
 
@@ -172,50 +104,12 @@ const Projects = () => {
     }
   };
 
-  const selectedSubject = useMemo(
-    () => formData.projectContent.find((s) => s.id === selectedSubjectId) || null,
-    [formData.projectContent, selectedSubjectId],
-  );
-  const addSubject = () => {
-    const title = newSubjectTitle.trim();
-    if (!title) return;
-    const id = mkId('sub');
-    setFormData((prev) => ({
-      ...prev,
-      projectContent: [...prev.projectContent, { id, title, details: '', chapters: [] }],
-    }));
-    setSelectedSubjectId(id);
-    setNewSubjectTitle('');
-  };
-
-  const removeSubject = (subjectId) => {
-    setFormData((prev) => ({
-      ...prev,
-      projectContent: prev.projectContent.filter((s) => s.id !== subjectId),
-    }));
-    if (selectedSubjectId === subjectId) {
-      setSelectedSubjectId('');
-    }
-  };
-
-  const updateSubjectDetails = (details) => {
-    if (!selectedSubjectId) return;
-    setFormData((prev) => ({
-      ...prev,
-      projectContent: prev.projectContent.map((s) =>
-        s.id === selectedSubjectId ? { ...s, details } : s,
-      ),
-      fullDescription: details,
-    }));
-  };
-
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Project Management</h1>
-          <p className="text-gray-500 mt-1">Manage text-based practical projects for students.</p>
+          <p className="text-gray-500 mt-1">Manage public projects and case studies for all students.</p>
         </div>
         <button 
           onClick={() => { resetForm(); setIsModalOpen(true); }}
@@ -243,30 +137,26 @@ const Projects = () => {
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Project Name</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Subject Mode</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Short Description</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Project Info</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Domain</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {projects.map((project) => (
-                  (() => {
-                    const summary = firstContentSummary(project);
-                    return (
                   <tr key={project.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900">{project.title}</div>
+                      <div className="text-xs text-gray-500 truncate max-w-xs">{project.shortDescription}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-700 font-semibold">{summary.subject}</div>
-                      <div className="text-xs text-gray-500">{summary.chapter}</div>
+                      <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-xs font-bold">
+                        <Layers size={12} />
+                        {project.domain || 'N/A'}
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-500 truncate max-w-md">{project.shortDescription}</div>
-                    </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
                         project.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
                       }`}>
@@ -297,8 +187,6 @@ const Projects = () => {
                       </button>
                     </td>
                   </tr>
-                    );
-                  })()
                 ))}
               </tbody>
             </table>
@@ -325,7 +213,7 @@ const Projects = () => {
                     value={formData.title}
                     onChange={(e) => setFormData({...formData, title: e.target.value})}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-brand-blue font-bold text-lg" 
-                    placeholder="Enter bold project title" 
+                    placeholder="e.g. ChatGPT App, E-Commerce Site" 
                   />
                 </div>
                 
@@ -339,6 +227,32 @@ const Projects = () => {
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-brand-blue" 
                     placeholder="Brief 1-line overview for the list" 
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Project Category / Field</label>
+                  <div className="relative">
+                    <Layers className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input 
+                      type="text" 
+                      value={formData.domain}
+                      onChange={(e) => setFormData({...formData, domain: e.target.value})}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue" 
+                      placeholder="e.g. Artificial Intelligence / Web Development" 
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Project Overview / Full Details *</label>
+                  <textarea 
+                    rows="8" 
+                    required
+                    value={formData.overview}
+                    onChange={(e) => setFormData({...formData, overview: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-brand-blue resize-none font-medium" 
+                    placeholder="Detailed project explanation, overview, and requirements..."
+                  ></textarea>
                 </div>
 
                 <div>
@@ -371,75 +285,6 @@ const Projects = () => {
                     ))}
                   </div>
                 </div>
-
-                <div className="space-y-3 p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                  <label className="block text-sm font-bold text-gray-700">Project Content Structure (Subject + Description)</label>
-
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newSubjectTitle}
-                      onChange={(e) => setNewSubjectTitle(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-brand-blue"
-                      placeholder="Add subject/category (e.g. AI)"
-                    />
-                    <button type="button" onClick={addSubject} className="px-3 py-2 bg-brand-blue text-white rounded-lg text-sm font-semibold">Add Subject</button>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {formData.projectContent.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedSubjectId(s.id);
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold border ${
-                          selectedSubjectId === s.id ? 'bg-brand-blue text-white border-brand-blue' : 'bg-white text-gray-700 border-gray-200'
-                        }`}
-                      >
-                        {s.title}
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeSubject(s.id);
-                          }}
-                          className="ml-2 inline-block text-[11px] opacity-80"
-                        >
-                          ✕
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {selectedSubject ? (
-                    <div className="space-y-3 bg-white border border-gray-100 rounded-lg p-3">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1.5">Subject Details ({selectedSubject.title})</label>
-                        <textarea
-                          rows="8"
-                          value={selectedSubject?.details || ''}
-                          onChange={(e) => updateSubjectDetails(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-brand-blue resize-none"
-                          placeholder="Subject details yahan direct likhiye."
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500">Add/select a subject to add direct details.</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Project Intro / Overview (optional)</label>
-                  <textarea 
-                    rows="8" 
-                    value={formData.fullDescription}
-                    onChange={(e) => setFormData({...formData, fullDescription: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-brand-blue resize-none" 
-                    placeholder="Optional general intro. Detailed content should be filled subject-wise below."
-                  ></textarea>
-                </div>
                 
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
                   <input 
@@ -449,31 +294,7 @@ const Projects = () => {
                     className="w-5 h-5 text-brand-blue rounded border-gray-300 focus:ring-brand-blue cursor-pointer"
                     id="isActive"
                   />
-                  <label htmlFor="isActive" className="text-sm font-semibold text-gray-700 cursor-pointer">Show this project to students</label>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="block text-sm font-bold text-gray-700">Target Courses (Who can see this?)</label>
-                  <p className="text-xs text-gray-500">Only students enrolled in selected courses will see this project. Select none to hide from everyone.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto p-4 border border-gray-100 rounded-xl bg-gray-50/50">
-                    {courses.map(course => (
-                      <label key={course.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg transition-colors cursor-pointer border border-transparent hover:border-gray-100">
-                        <input 
-                          type="checkbox"
-                          checked={formData.allowedCourses.includes(course.id)}
-                          onChange={(e) => {
-                            const newAllowed = e.target.checked 
-                              ? [...formData.allowedCourses, course.id]
-                              : formData.allowedCourses.filter(id => id !== course.id);
-                            setFormData({...formData, allowedCourses: newAllowed});
-                          }}
-                          className="w-4 h-4 text-brand-blue rounded border-gray-300"
-                        />
-                        <span className="text-sm font-medium text-gray-700 truncate">{course.title}</span>
-                      </label>
-                    ))}
-                    {courses.length === 0 && <p className="text-sm text-gray-400 col-span-2 text-center py-4">No courses available. Add courses first.</p>}
-                  </div>
+                  <label htmlFor="isActive" className="text-sm font-semibold text-gray-700 cursor-pointer">Show this project to all students</label>
                 </div>
               </form>
             </div>

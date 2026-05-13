@@ -13,7 +13,9 @@ import {
   Settings, 
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserPlus,
+  User
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -26,7 +28,9 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Students', icon: Users, path: '/students' },
+    { name: 'App Registrations', icon: UserPlus, path: '/app-registrations' },
     { name: 'Courses', icon: BookOpen, path: '/courses' },
+    { name: 'Teachers', icon: User, path: '/teachers' },
     { name: 'Lectures', icon: Video, path: '/lectures' },
     { name: 'Notes', icon: FileText, path: '/notes' },
     { name: 'Projects', icon: Briefcase, path: '/projects' },
@@ -100,6 +104,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           type="button"
           className="flex items-center gap-4 px-3 py-3 rounded-xl text-white/70 hover:bg-rose-500/20 hover:text-rose-400 transition-all duration-200 w-full group"
           onClick={async () => {
+            if (!window.confirm("Are you sure you want to logout?")) return;
             try {
               await signOut(auth);
             } catch {

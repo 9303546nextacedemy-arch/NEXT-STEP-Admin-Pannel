@@ -68,6 +68,7 @@ export const lectureService = {
         : lectureData.title;
     let payload = normalizeLectureDescription({ ...lectureData, title, videoUrl });
     payload.isLive = !!payload.isLive;
+    payload.isDemo = !!payload.isDemo;
     if (payload.isLive) {
       payload.liveScheduledAt = payload.liveScheduledAt ? new Date(payload.liveScheduledAt).toISOString() : "";
       payload.liveVisibilityMinutes = normalizeLiveVisibilityMinutes(payload.liveVisibilityMinutes);
@@ -107,6 +108,7 @@ export const lectureService = {
       courseTitle: payload.courseTitle,
       subjectTitle: payload.subjectTitle,
       chapterTitle: payload.chapterTitle,
+      itemId: docRef.id,
     });
     return docRef.id;
   },
@@ -117,6 +119,7 @@ export const lectureService = {
     if (typeof patch.videoUrl === "string") patch.videoUrl = patch.videoUrl.trim();
     if (typeof patch.title === "string") patch.title = patch.title.trim();
     patch.isLive = !!patch.isLive;
+    patch.isDemo = !!patch.isDemo;
     if (patch.isLive) {
       patch.liveScheduledAt = patch.liveScheduledAt ? new Date(patch.liveScheduledAt).toISOString() : "";
       patch.liveVisibilityMinutes = normalizeLiveVisibilityMinutes(patch.liveVisibilityMinutes);

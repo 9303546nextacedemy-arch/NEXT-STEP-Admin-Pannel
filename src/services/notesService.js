@@ -68,6 +68,7 @@ export const notesService = {
       courseTitle: payload.courseTitle,
       subjectTitle: payload.subjectTitle,
       chapterTitle: payload.chapterTitle,
+      itemId: docRef.id,
     });
     return docRef.id;
   },

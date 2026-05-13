@@ -10,8 +10,10 @@ import Courses from './pages/Courses';
 import Lectures from './pages/Lectures';
 import Notes from './pages/Notes';
 import Projects from './pages/Projects';
+import AppRegistrations from './pages/AppRegistrations';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
+import Teachers from './pages/Teachers';
 import Login from './pages/Login';
 import { Loader2 } from 'lucide-react';
 
@@ -28,7 +30,8 @@ function App() {
         return;
       }
       const email = firebaseUser.email;
-      if (!isAllowedAdminEmail(email)) {
+      const allowed = await isAllowedAdminEmail(email);
+      if (!allowed) {
         setAuthError(
           'Access denied. Sign in only with the authorized admin Gmail account.'
         );
@@ -78,12 +81,14 @@ function App() {
         >
           <Route index element={<Dashboard />} />
           <Route path="students" element={<Students />} />
+          <Route path="app-registrations" element={<AppRegistrations />} />
           <Route path="courses" element={<Courses />} />
           <Route path="lectures" element={<Lectures />} />
           <Route path="notes" element={<Notes />} />
           <Route path="live-classes" element={<Navigate to="/lectures" replace />} />
           <Route path="projects" element={<Projects />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="teachers" element={<Teachers />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

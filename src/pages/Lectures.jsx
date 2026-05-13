@@ -48,6 +48,7 @@ const Lectures = () => {
     duration: '',
     status: 'Published',
     isLive: false,
+    isDemo: false,
     liveScheduledAt: '',
     liveVisibilityMinutes: '60',
   });
@@ -157,7 +158,7 @@ const Lectures = () => {
       }
       setIsModalOpen(false);
       setEditingId(null);
-      setFormData({ title: '', description: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', videoUrl: '', duration: '', status: 'Published', isLive: false, liveScheduledAt: '', liveVisibilityMinutes: '60' });
+      setFormData({ title: '', description: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', videoUrl: '', duration: '', status: 'Published', isLive: false, isDemo: false, liveScheduledAt: '', liveVisibilityMinutes: '60' });
       setNewChapterTitle('');
       setAddingChapter(false);
       setNewSubjectTitle('');
@@ -282,7 +283,7 @@ const Lectures = () => {
         <button 
           onClick={() => {
             setEditingId(null);
-            setFormData({ title: '', description: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', videoUrl: '', duration: '', status: 'Published', isLive: false, liveScheduledAt: '', liveVisibilityMinutes: '60' });
+            setFormData({ title: '', description: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', videoUrl: '', duration: '', status: 'Published', isLive: false, isDemo: false, liveScheduledAt: '', liveVisibilityMinutes: '60' });
             setNewChapterTitle('');
             setAddingChapter(false);
             setNewSubjectTitle('');
@@ -372,10 +373,15 @@ const Lectures = () => {
                           <Play size={16} />
                         </div>
                         <div className="min-w-0">
-                        <span className="text-sm font-semibold text-gray-900 block">{lecture.title}</span>
-                        {lecture.description?.trim() ? (
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{lecture.description.trim()}</p>
-                        ) : null}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-900 block">{lecture.title}</span>
+                            {lecture.isDemo && (
+                              <span className="bg-amber-100 text-amber-700 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Demo</span>
+                            )}
+                          </div>
+                          {lecture.description?.trim() ? (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{lecture.description.trim()}</p>
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -417,6 +423,7 @@ const Lectures = () => {
                             duration: lecture.duration || '',
                             status: lecture.status || 'Published',
                             isLive: !!lecture.isLive,
+                            isDemo: !!lecture.isDemo,
                             liveScheduledAt: formatForDatetimeLocal(lecture.liveScheduledAt),
                             liveVisibilityMinutes:
                               lecture.liveVisibilityMinutes != null && lecture.liveVisibilityMinutes !== ''
@@ -619,6 +626,19 @@ const Lectures = () => {
                     Live
                   </button>
                 </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-amber-50/50 border border-amber-100 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="isDemo"
+                  checked={formData.isDemo}
+                  onChange={(e) => setFormData({ ...formData, isDemo: e.target.checked })}
+                  className="w-4 h-4 text-brand-blue border-gray-300 rounded focus:ring-brand-blue"
+                />
+                <label htmlFor="isDemo" className="text-sm font-medium text-amber-900">
+                  Mark as Demo Lecture
+                  <span className="block text-xs font-normal text-amber-700 mt-0.5">This lecture will be visible to non-enrolled students in the Demo Class section.</span>
+                </label>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Video URL</label>

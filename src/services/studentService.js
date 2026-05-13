@@ -7,7 +7,8 @@ import {
   doc, 
   serverTimestamp,
   query,
-  orderBy 
+  orderBy,
+  where
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
@@ -21,6 +22,22 @@ export const studentService = {
       id: doc.id,
       ...doc.data()
     }));
+  },
+
+  getAppRegistrations: async () => {
+    const q = query(
+      collection(db, COLLECTION_NAME), 
+      where("registrationSource", "==", "app")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })).sort((a, b) => {
+      const ta = a.createdAt?.toDate ? a.createdAt.toDate() : 0;
+      const tb = b.createdAt?.toDate ? b.createdAt.toDate() : 0;
+      return tb - ta;
+    });
   },
 
   addStudent: async (studentData) => {

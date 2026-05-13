@@ -81,7 +81,17 @@ export const notificationService = {
     courseTitle,
     subjectTitle,
     chapterTitle,
+    itemId,
   }) => {
+    let deepLink = '/notifications';
+    if (itemId && courseId) {
+      if (kind === 'lecture' || kind === 'live') {
+        deepLink = `/video/${courseId}/${itemId}`;
+      } else if (kind === 'notes') {
+        deepLink = `/notes/${courseId}/${itemId}`;
+      }
+    }
+
     return notificationService.sendNotification({
       title,
       message,
@@ -89,11 +99,12 @@ export const notificationService = {
       targetCourseIds: courseId ? [courseId] : [],
       meta: {
         kind,
+        itemId: itemId || '',
         courseId: courseId || '',
         courseTitle: clean(courseTitle),
         subjectTitle: clean(subjectTitle),
         chapterTitle: clean(chapterTitle),
-        deepLink: '/notifications',
+        deepLink,
       },
     });
   }

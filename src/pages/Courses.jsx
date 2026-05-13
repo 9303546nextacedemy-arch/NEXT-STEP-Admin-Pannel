@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, LayoutGrid, List, Loader2, Upload } from 'lucide-react';
 import { courseService } from '../services/courseService';
+import { teacherService } from '../services/teacherService';
 import { storageService } from '../services/storageService';
 import { categoryService } from '../services/categoryService';
 import { normalizeSubjects, newSubjectId } from '../utils/courseSubjects';
@@ -36,13 +37,26 @@ const Courses = () => {
     bannerUrl: '',
     isActive: true,
     isFeatured: false,
-    subjects: []
+    subjects: [],
+    teacherIds: []
   });
+
+  const [teachers, setTeachers] = useState([]);
 
   useEffect(() => {
     fetchCourses();
     fetchCategories();
+    fetchTeachers();
   }, []);
+
+  const fetchTeachers = async () => {
+    try {
+      const data = await teacherService.getAllTeachers();
+      setTeachers(data);
+    } catch (error) {
+      console.error("Error fetching teachers:", error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -134,7 +148,8 @@ const Courses = () => {
         category: '', level: 'Beginner', duration: '', validity: '',
         price: '', subjectCount: '', teacherCount: '',
         thumbnailUrl: '', bannerUrl: '', isActive: true, isFeatured: false,
-        subjects: []
+        subjects: [],
+        teacherIds: []
       });
       setNewCourseSubjectTitle('');
       fetchCourses();
@@ -182,7 +197,8 @@ const Courses = () => {
             category: categories[0]?.name || 'Computer', level: 'Beginner', duration: '', validity: '',
             price: '', subjectCount: '', teacherCount: '',
             thumbnailUrl: '', bannerUrl: '', isActive: true, isFeatured: false,
-            subjects: []
+            subjects: [],
+            teacherIds: []
           }); setNewCourseSubjectTitle(''); setIsModalOpen(true); }}
           className="flex items-center justify-center gap-2 bg-brand-blue text-white px-5 py-2.5 rounded-xl hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20"
         >
@@ -649,6 +665,42 @@ const Courses = () => {
                       >
                         Add
                       </button>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Assign Teachers *</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 max-h-48 overflow-y-auto custom-scrollbar">
+                      {teachers.map((teacher) => (
+                        <label key={teacher.id} className="flex items-center gap-3 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={(formData.teacherIds || []).includes(teacher.id)}
+                            onChange={(e) => {
+                              const ids = [...(formData.teacherIds || [])];
+                              if (e.target.checked) {
+                                if (!ids.includes(teacher.id)) ids.push(teacher.id);
+                              } else {
+                                const index = ids.indexOf(teacher.id);
+                                if (index > -1) ids.splice(index, 1);
+                              }
+                              setFormData({ ...formData, teacherIds: ids });
+                            }}
+                            className="w-5 h-5 text-brand-blue rounded border-gray-300 focus:ring-brand-blue"
+                          />
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 shrink-0 border border-gray-100">
+                              {teacher.imageUrl ? <img src={teacher.imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100"><User size={14} /></div>}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700 truncate group-hover:text-brand-blue transition-colors">{teacher.name}</span>
+                          </div>
+                        </label>
+                      ))}
+                      {teachers.length === 0 && (
+                        <div className="col-span-2 text-center py-4 text-gray-400 text-sm italic">
+                          No teachers found. Add teachers in the "Teachers" section.
+                        </div>
+                      )}
                     </div>
                   </div>
                   
