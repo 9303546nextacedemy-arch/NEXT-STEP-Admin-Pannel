@@ -1,0 +1,5 @@
+{
+  "project": "nextstep-academy-legal",
+  "entrypoint": "main.ts",
+  "include": ["main.ts", "render.ts", "../shared/legalContent.json"]
+}

@@ -15,6 +15,8 @@ import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import Teachers from './pages/Teachers';
 import Login from './pages/Login';
+import LegalDocs from './pages/LegalDocs';
+import { LegalHomePublic, LegalTermsPublic, LegalPrivacyPublic } from './pages/LegalPublic';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -64,6 +66,10 @@ function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/legal" element={<LegalHomePublic />} />
+        <Route path="/legal/terms" element={<LegalTermsPublic />} />
+        <Route path="/legal/privacy" element={<LegalPrivacyPublic />} />
+
         <Route
           path="/login"
           element={
@@ -90,6 +96,7 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="teachers" element={<Teachers />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="legal-docs" element={<LegalDocs />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
         <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} replace />} />

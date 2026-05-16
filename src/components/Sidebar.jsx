@@ -10,7 +10,8 @@ import {
   FileText, 
   Briefcase, 
   Bell, 
-  Settings, 
+  Settings,
+  Scale,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -35,6 +36,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { name: 'Notes', icon: FileText, path: '/notes' },
     { name: 'Projects', icon: Briefcase, path: '/projects' },
     { name: 'Notifications', icon: Bell, path: '/notifications' },
+    { name: 'Legal & Play Store', icon: Scale, path: '/legal-docs' },
     { name: 'Settings', icon: Settings, path: '/settings' },
   ];
 

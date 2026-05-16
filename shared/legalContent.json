@@ -1,0 +1,268 @@
+{
+  "appName": "NEXTSTEP Academy",
+  "developerName": "NEXTSTEP Academy",
+  "lastUpdated": "May 16, 2026",
+  "effectiveDate": "May 16, 2026",
+  "contact": {
+    "phone": "+91 9168482314",
+    "phoneDisplay": "+91 9168482314",
+    "email": "9303546nextacedemy@gmail.com",
+    "whatsapp": "https://wa.me/919168482314"
+  },
+  "terms": {
+    "title": "Terms & Conditions",
+    "sections": [
+      {
+        "title": "1. Introduction",
+        "paragraphs": [
+          "Welcome to NEXTSTEP Academy (\"we\", \"us\", or \"our\"). These Terms and Conditions (\"Terms\") govern your access to and use of the NEXTSTEP Academy mobile application (\"App\") and related educational services.",
+          "By downloading, installing, registering for, or using the App, you agree to be bound by these Terms. If you do not agree, do not use the App."
+        ]
+      },
+      {
+        "title": "2. About the Service",
+        "paragraphs": [
+          "NEXTSTEP Academy is an educational platform for diploma-level students (Computer, IT, AI, and related branches). The App provides course videos, notes, live classes, projects, notifications, and related learning materials for approved students only."
+        ]
+      },
+      {
+        "title": "3. Eligibility",
+        "bullets": [
+          "You must be at least 13 years of age to use the App. If you are under 18, you should use the App only with permission from a parent or legal guardian.",
+          "Access is limited to students approved by NEXTSTEP Academy administrators.",
+          "You must provide accurate registration information (name, email, phone number) and keep it up to date."
+        ]
+      },
+      {
+        "title": "4. Account Registration & Security",
+        "bullets": [
+          "You may sign in using email-based OTP verification and/or phone-based verification as enabled by the App.",
+          "Only registered and admin-approved accounts may access course content.",
+          "You are responsible for maintaining the confidentiality of your account and device.",
+          "You must not share your login credentials, OTP codes, or session access with others.",
+          "We may suspend or terminate accounts that violate these Terms or pose a security risk."
+        ]
+      },
+      {
+        "title": "5. Acceptable Use",
+        "paragraphs": ["You agree NOT to:"],
+        "bullets": [
+          "Record, screenshot, download, copy, redistribute, or publicly share any App content without written permission.",
+          "Share live class or meeting links with unauthorized persons.",
+          "Attempt to bypass security controls, reverse engineer, decompile, or interfere with the App.",
+          "Use the App for any unlawful, harmful, or commercial purpose unrelated to your personal education.",
+          "Upload malware, spam, or misleading information through support channels."
+        ]
+      },
+      {
+        "title": "6. Educational Content & Intellectual Property",
+        "bullets": [
+          "All videos, notes, lectures, projects, logos, and materials in the App are owned by NEXTSTEP Academy or its licensors.",
+          "Content is licensed to you for personal, non-commercial educational use only.",
+          "No ownership rights are transferred to you by using the App."
+        ]
+      },
+      {
+        "title": "7. Security Features",
+        "paragraphs": [
+          "To protect educational content and user data, the App may use technical measures including restricted streaming, session-based access, and limitations on screen capture or recording where supported by your device and operating system."
+        ],
+        "bullets": [
+          "Circumventing or attempting to circumvent these protections is strictly prohibited.",
+          "We do not guarantee that all devices or OS versions will support every security restriction."
+        ]
+      },
+      {
+        "title": "8. Live Classes & Third-Party Platforms",
+        "bullets": [
+          "Live sessions may be delivered through third-party services such as Zoom or Google Meet.",
+          "Meeting links are provided only to authorized enrolled users.",
+          "You must follow the rules of those platforms and must not record or redistribute live sessions without permission.",
+          "We are not responsible for outages or issues caused solely by third-party platforms."
+        ]
+      },
+      {
+        "title": "9. Projects Section",
+        "bullets": [
+          "Project ideas and materials are provided for educational guidance only.",
+          "NEXTSTEP Academy does not guarantee academic grades, approvals, or outcomes from any institution."
+        ]
+      },
+      {
+        "title": "10. Notifications",
+        "bullets": [
+          "The App may send push notifications about classes, notes, and updates if you grant notification permission on your device.",
+          "You can disable notifications from your device settings at any time."
+        ]
+      },
+      {
+        "title": "11. Fees & Payments",
+        "paragraphs": [
+          "If any paid features or subscriptions are introduced in the future, applicable pricing and refund rules will be disclosed in the App and/or on Google Play before purchase. Currently, access is provided according to your enrollment status with NEXTSTEP Academy."
+        ]
+      },
+      {
+        "title": "12. Disclaimer of Warranties",
+        "paragraphs": [
+          "The App and content are provided on an \"as is\" and \"as available\" basis. To the fullest extent permitted by law, we disclaim all warranties, express or implied, including fitness for a particular purpose and non-infringement.",
+          "We do not warrant uninterrupted, error-free, or virus-free operation of the App."
+        ]
+      },
+      {
+        "title": "13. Limitation of Liability",
+        "paragraphs": ["To the maximum extent permitted by applicable law, NEXTSTEP Academy shall not be liable for:"],
+        "bullets": [
+          "Indirect, incidental, special, or consequential damages.",
+          "Loss of data, profits, or academic results.",
+          "Internet, device, or network failures outside our reasonable control.",
+          "Actions or failures of third-party services (including Firebase, Google, Zoom, or hosting providers)."
+        ]
+      },
+      {
+        "title": "14. Account Suspension & Termination",
+        "paragraphs": [
+          "We may suspend or terminate your access immediately, with or without notice, if you violate these Terms, misuse content, or if required for security or legal compliance.",
+          "You may request account deactivation by contacting us using the details in Section 16."
+        ]
+      },
+      {
+        "title": "15. Changes to These Terms",
+        "paragraphs": [
+          "We may update these Terms from time to time. The \"Last updated\" date at the top of this page will reflect changes. Continued use of the App after updates constitutes acceptance of the revised Terms.",
+          "Material changes may also be communicated through the App or other reasonable means."
+        ]
+      },
+      {
+        "title": "16. Governing Law & Contact",
+        "paragraphs": [
+          "These Terms are governed by the laws of India, without regard to conflict-of-law principles. Courts in India shall have jurisdiction, subject to applicable consumer protection laws.",
+          "For questions, support, or legal notices regarding these Terms, contact us:"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "sections": [
+      {
+        "title": "1. Introduction",
+        "paragraphs": [
+          "NEXTSTEP Academy (\"we\", \"us\", or \"our\") respects your privacy. This Privacy Policy explains how we collect, use, store, share, and protect personal information when you use the NEXTSTEP Academy mobile application (\"App\") listed on Google Play.",
+          "By using the App, you agree to the practices described in this policy. If you do not agree, please do not use the App."
+        ]
+      },
+      {
+        "title": "2. Data Controller",
+        "paragraphs": [
+          "The data controller responsible for your personal information is NEXTSTEP Academy. Contact details are provided in Section 14 of this policy."
+        ]
+      },
+      {
+        "title": "3. Information We Collect",
+        "paragraphs": ["We may collect the following categories of information:"],
+        "bullets": [
+          "Identity & contact data: name, email address, phone number, and student profile details you provide during registration or login.",
+          "Authentication data: OTP session identifiers and verification status (we do not store your OTP codes in plain text in the App).",
+          "Usage & learning data: course progress, video watch activity, notes access, and interaction with App features.",
+          "Device & technical data: device type, operating system version, app version, language, and push notification tokens (FCM) when you allow notifications.",
+          "Security-related data: logs needed to detect unauthorized access, account abuse, or content misuse.",
+          "Communications: messages you send to our support team (phone, WhatsApp, or email)."
+        ]
+      },
+      {
+        "title": "4. How We Use Your Information",
+        "bullets": [
+          "Create and manage your student account and verify your identity.",
+          "Provide access to courses, videos, notes, live classes, and projects.",
+          "Track learning progress and personalize your dashboard.",
+          "Send service notifications (class reminders, new content, important updates).",
+          "Maintain App security and prevent unauthorized sharing of educational content.",
+          "Respond to support requests and improve our services.",
+          "Comply with legal obligations and enforce our Terms & Conditions."
+        ]
+      },
+      {
+        "title": "5. Legal Basis for Processing",
+        "paragraphs": [
+          "We process personal information based on: (a) your consent (e.g., notifications, registration); (b) performance of our educational service contract with you; and (c) our legitimate interests in securing the platform and preventing misuse, where permitted by law."
+        ]
+      },
+      {
+        "title": "6. Permissions We May Request",
+        "bullets": [
+          "Internet access — required to stream content and sync your account.",
+          "Notifications (Android POST_NOTIFICATIONS) — optional; used to send class and content alerts.",
+          "Vibration — optional; may be used with notifications on supported devices."
+        ],
+        "paragraphsAfter": [
+          "You can revoke optional permissions anytime in your device settings. Some App features may not work without required permissions."
+        ]
+      },
+      {
+        "title": "7. Data Sharing & Third-Party Services",
+        "paragraphs": [
+          "We do not sell your personal information. We may share limited data with trusted service providers only as needed to operate the App, including:"
+        ],
+        "bullets": [
+          "Google Firebase / Google Cloud — authentication, database, cloud functions, analytics, and push notifications (FCM).",
+          "Video and file hosting providers — secure delivery of lectures and notes.",
+          "Live class providers (e.g., Zoom, Google Meet) — when you join scheduled sessions.",
+          "Communication tools — for OTP delivery or support as configured by us."
+        ],
+        "paragraphsAfter": [
+          "These providers process data under their own privacy policies and our instructions where applicable. We require them to use data only for providing services to us."
+        ]
+      },
+      {
+        "title": "8. Data Retention",
+        "paragraphs": [
+          "We retain personal information for as long as your account is active or as needed to provide services, comply with law, resolve disputes, and enforce agreements.",
+          "When your account is deleted or deactivated, we delete or anonymize personal data within a reasonable period, except where retention is required by law or for legitimate security purposes."
+        ]
+      },
+      {
+        "title": "9. Data Security",
+        "paragraphs": [
+          "We implement administrative, technical, and organizational measures to protect your information, including access controls, secure authentication, and restricted content delivery.",
+          "No method of transmission or storage is 100% secure. Please use a secure device and do not share your login credentials."
+        ]
+      },
+      {
+        "title": "10. Your Rights & Choices",
+        "bullets": [
+          "Access or update your profile information through the App where available.",
+          "Withdraw notification permission from device settings.",
+          "Request correction or deletion of your personal data by contacting us (see Section 12).",
+          "Object to or restrict certain processing where applicable under local law."
+        ],
+        "paragraphs": [
+          "We will respond to valid requests within a reasonable time frame as required by applicable law."
+        ]
+      },
+      {
+        "title": "11. Children's Privacy",
+        "paragraphs": [
+          "The App is intended for students generally aged 13 and above. We do not knowingly collect personal information from children under 13 without verifiable parental consent. If you believe a child under 13 has provided us data, contact us and we will take appropriate steps to delete it."
+        ]
+      },
+      {
+        "title": "12. International Users",
+        "paragraphs": [
+          "Our services are primarily operated from India. If you access the App from other countries, your information may be processed in India or in countries where our service providers operate, subject to applicable safeguards."
+        ]
+      },
+      {
+        "title": "13. Changes to This Privacy Policy",
+        "paragraphs": [
+          "We may update this Privacy Policy from time to time. The \"Last updated\" date at the top will indicate the latest version. We encourage you to review this page periodically. Continued use of the App after changes means you accept the updated policy."
+        ]
+      },
+      {
+        "title": "14. Contact Us",
+        "paragraphs": [
+          "For privacy-related questions, data access requests, or account deletion requests, contact:"
+        ]
+      }
+    ]
+  }
+}

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "legal:dev": "cd legal-site && deno task serve",
+    "legal:start": "cd legal-site && deno task start"
   },
   "dependencies": {
     "autoprefixer": "^10.5.0",
