@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, LayoutGrid, List, Loader2, Upload } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, LayoutGrid, List, Loader2, Upload, User } from 'lucide-react';
 import { courseService } from '../services/courseService';
 import { teacherService } from '../services/teacherService';
 import { storageService } from '../services/storageService';
