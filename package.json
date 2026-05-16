@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/generate-legal-static.mjs && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "legal:dev": "cd legal-site && deno task serve",

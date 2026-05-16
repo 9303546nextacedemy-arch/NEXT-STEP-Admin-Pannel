@@ -75,8 +75,8 @@ export function renderLegalPage(
 ): string {
   const other =
     slug === "terms"
-      ? { href: "/privacy", label: "Privacy Policy" }
-      : { href: "/terms", label: "Terms & Conditions" };
+      ? { href: "/legal/privacy", label: "Privacy Policy" }
+      : { href: "/legal/terms", label: "Terms & Conditions" };
 
   const sectionsHtml = doc.sections
     .map((s, i, arr) => {
@@ -282,7 +282,7 @@ export function renderLegalPage(
     <article class="card">
       ${sectionsHtml}
       <nav class="footer-nav" aria-label="Legal pages">
-        <a href="/">Home</a>
+        <a href="/legal">Home</a>
         <a href="${other.href}">${escapeHtml(other.label)}</a>
       </nav>
     </article>
@@ -316,8 +316,8 @@ export function renderHomePage(meta: LegalMeta): string {
     <h1>${escapeHtml(meta.appName)}</h1>
     <p>Public legal documents for Google Play and app users.</p>
     <nav class="home-links">
-      <a href="/terms">${escapeHtml(meta.terms.title)}</a>
-      <a href="/privacy">${escapeHtml(meta.privacy.title)}</a>
+      <a href="/legal/terms">${escapeHtml(meta.terms.title)}</a>
+      <a href="/legal/privacy">${escapeHtml(meta.privacy.title)}</a>
     </nav>
   </div>
 </body>
