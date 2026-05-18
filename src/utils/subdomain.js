@@ -33,7 +33,8 @@ export const getAdminUrl = () => {
   const host = window.location.host;
   const hostname = window.location.hostname;
   
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  // Localhost or Vercel preview domains should use the query parameter fallback
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.vercel.app')) {
     return `${protocol}//${host}/?admin=true`;
   }
   
@@ -57,7 +58,7 @@ export const getMainWebsiteUrl = () => {
   const host = window.location.host;
   const hostname = window.location.hostname;
   
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.vercel.app')) {
     return `${protocol}//${host}/?admin=false`;
   }
   
