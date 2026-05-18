@@ -31,23 +31,7 @@ export const isSubdomainAdmin = () => {
 export const getAdminUrl = () => {
   const protocol = window.location.protocol;
   const host = window.location.host;
-  const hostname = window.location.hostname;
-  
-  // Localhost or Vercel preview domains should use the query parameter fallback
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.vercel.app')) {
-    return `${protocol}//${host}/?admin=true`;
-  }
-  
-  if (hostname.startsWith('www.')) {
-    const cleanHost = host.replace(/^www\./, '');
-    return `${protocol}//admin.${cleanHost}`;
-  }
-  
-  if (!hostname.startsWith('admin.')) {
-    return `${protocol}//admin.${host}`;
-  }
-  
-  return `${protocol}//${host}`;
+  return `${protocol}//${host}/?admin=true`;
 };
 
 /**
@@ -56,16 +40,5 @@ export const getAdminUrl = () => {
 export const getMainWebsiteUrl = () => {
   const protocol = window.location.protocol;
   const host = window.location.host;
-  const hostname = window.location.hostname;
-  
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.vercel.app')) {
-    return `${protocol}//${host}/?admin=false`;
-  }
-  
-  if (hostname.startsWith('admin.')) {
-    const cleanHost = host.replace(/^admin\./, '');
-    return `${protocol}//${cleanHost}`;
-  }
-  
-  return `${protocol}//${host}`;
+  return `${protocol}//${host}/?admin=false`;
 };
