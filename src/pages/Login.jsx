@@ -43,7 +43,7 @@ const Login = ({ authError, clearAuthError }) => {
         <div className="bg-brand-blue p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-white overflow-hidden flex items-center justify-center mx-auto shadow-lg mb-4 ring-1 ring-white/30">
             <img
-              src="/next-step-academy-logo.svg"
+              src="/next-step-academy-logo.png"
               alt=""
               className="w-full h-full object-contain scale-[1.02]"
             />

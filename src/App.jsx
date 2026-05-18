@@ -17,14 +17,30 @@ import Teachers from './pages/Teachers';
 import Login from './pages/Login';
 import LegalDocs from './pages/LegalDocs';
 import { LegalHomePublic, LegalTermsPublic, LegalPrivacyPublic } from './pages/LegalPublic';
+import LandingPage from './pages/LandingPage';
+import { isSubdomainAdmin } from './utils/subdomain';
 import { Loader2 } from 'lucide-react';
 
 function App() {
+  const [isAdminMode, setIsAdminMode] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
+    // Check subdomain/parameter mode
+    const adminCheck = isSubdomainAdmin();
+    setIsAdminMode(adminCheck);
+
+    // If we're not running the Admin Panel, skip unnecessary Firebase admin checks
+    if (!adminCheck) {
+      document.title = "NEXTSTEP Academy - One Step Always Forward";
+      setAuthReady(true);
+      return;
+    }
+
+    document.title = "NEXTSTEP Academy - Admin Panel";
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null);
@@ -53,15 +69,29 @@ function App() {
     return () => unsub();
   }, []);
 
-  const isAuthenticated = !!user;
-
-  if (!authReady) {
+  if (!authReady || isAdminMode === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="animate-spin text-brand-blue" size={40} />
       </div>
     );
   }
+
+  // If not in admin mode, show landing page or public legal docs
+  if (!isAdminMode) {
+    return (
+      <Router>
+        <Routes>
+          <Route path="/legal" element={<LegalHomePublic />} />
+          <Route path="/legal/terms" element={<LegalTermsPublic />} />
+          <Route path="/legal/privacy" element={<LegalPrivacyPublic />} />
+          <Route path="*" element={<LandingPage />} />
+        </Routes>
+      </Router>
+    );
+  }
+
+  const isAuthenticated = !!user;
 
   return (
     <Router>

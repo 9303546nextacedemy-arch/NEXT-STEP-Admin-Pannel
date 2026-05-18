@@ -53,7 +53,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-10 h-10 shrink-0 rounded-xl bg-white overflow-hidden flex items-center justify-center shadow-md ring-1 ring-white/20">
               <img
-                src="/next-step-academy-logo.svg"
+                src="/next-step-academy-logo.png"
                 alt=""
                 className="w-full h-full object-contain scale-[1.02]"
               />
@@ -66,7 +66,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
         {isCollapsed && (
           <div className="w-10 h-10 rounded-xl bg-white overflow-hidden flex items-center justify-center shadow-md ring-1 ring-white/20 mx-auto shrink-0">
             <img
-              src="/next-step-academy-logo.svg"
+              src="/next-step-academy-logo.png"
               alt=""
               className="w-full h-full object-contain scale-[1.02]"
             />
