@@ -193,17 +193,21 @@ const LandingPage = () => {
   const scrollToSection = (id) => {
     setActiveTab(id);
     setIsMobileMenuOpen(false);
-    const element = document.getElementById(id);
-    if (element) {
-      const headerOffset = 80;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-      
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-    }
+    
+    // Small timeout ensures the mobile menu closing animation starts before we scroll
+    setTimeout(() => {
+      const element = document.getElementById(id);
+      if (element) {
+        const headerOffset = window.innerWidth < 640 ? 64 : 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
   };
 
   return (
@@ -438,7 +442,7 @@ const LandingPage = () => {
       </section>
 
       {/* 3. ABOUT US & GOALS */}
-      <section id="about" className="py-12 bg-transparent">
+      <section id="about" className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -534,7 +538,7 @@ const LandingPage = () => {
       </section>
 
       {/* 4. WHY CHOOSE US SECTION */}
-      <section className="py-12 bg-transparent">
+      <section className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -584,7 +588,7 @@ const LandingPage = () => {
       </section>
 
       {/* 5. COURSES SECTION */}
-      <section id="courses" className="py-12 bg-transparent">
+      <section id="courses" className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -709,7 +713,7 @@ const LandingPage = () => {
       </section>
 
       {/* 6. PROJECTS SECTION */}
-      <section id="projects" className="py-12 bg-transparent">
+      <section id="projects" className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -798,7 +802,7 @@ const LandingPage = () => {
       </section>
 
       {/* 7. MOBILE APP SECTION */}
-      <section id="mobile-app" className="py-12 bg-transparent">
+      <section id="mobile-app" className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -918,7 +922,7 @@ const LandingPage = () => {
       </section>
 
       {/* 8. LIVE CLASSES SECTION */}
-      <section className="py-12 bg-transparent">
+      <section className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -1003,7 +1007,7 @@ const LandingPage = () => {
       </section>
 
       {/* 9. SECURITY CORE SHIELD SECTION */}
-      <section id="security" className="py-12 bg-transparent">
+      <section id="security" className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -1054,7 +1058,7 @@ const LandingPage = () => {
       </section>
 
       {/* 10. SYSTEM TOUR / FEATURES OVERVIEW */}
-      <section className="py-12 bg-transparent">
+      <section className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -1175,7 +1179,7 @@ const LandingPage = () => {
       </section>
 
       {/* 11. TESTIMONIALS SECTION */}
-      <section className="py-12 bg-transparent">
+      <section className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -1268,7 +1272,7 @@ const LandingPage = () => {
       </section>
 
       {/* 12. CONTACT US SECTION */}
-      <section id="contact" className="py-12 bg-transparent">
+      <section id="contact" className="py-6 sm:py-12 bg-transparent">
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
