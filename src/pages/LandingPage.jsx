@@ -38,9 +38,6 @@ const LandingPage = () => {
   const [submittingAdmission, setSubmittingAdmission] = useState(false);
 
   useEffect(() => {
-    // Scroll behavior
-    document.documentElement.style.scrollBehavior = 'smooth';
-    
     // Subscribe to Courses in real-time
     setLoadingCourses(true);
     const unsubscribeCourses = courseService.subscribeAllCourses(
@@ -98,7 +95,6 @@ const LandingPage = () => {
       .catch(err => console.error('Error fetching teachers:', err));
     
     return () => {
-      document.documentElement.style.scrollBehavior = 'auto';
       if (unsubscribeCourses) unsubscribeCourses();
       if (unsubscribeProjects) unsubscribeProjects();
       if (unsubscribeReviews) unsubscribeReviews();
@@ -308,7 +304,7 @@ const LandingPage = () => {
       {/* 2. HERO SECTION */}
       <section id="home" className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 md:pt-40 md:pb-36 bg-gradient-to-b from-blue-900/10 via-slate-100/30 to-transparent overflow-hidden">
         {/* Background Decorative Rings/Glows */}
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-br from-blue-400/15 via-[#C8A951]/10 to-transparent blur-[120px] rounded-full pointer-events-none -z-10" />
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-br from-blue-400/15 via-[#C8A951]/10 to-transparent blur-[120px] rounded-full pointer-events-none -z-10 hidden sm:block" />
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
@@ -827,6 +823,7 @@ const LandingPage = () => {
                   ease: "easeInOut" 
                 }}
                 className="relative w-[240px] h-[480px] sm:w-[300px] sm:h-[600px] bg-slate-900 rounded-[40px] sm:rounded-[50px] p-3 shadow-2xl border-4 border-slate-800 overflow-hidden ring-4 ring-slate-700/20 z-10 shrink-0"
+                style={{ willChange: 'transform' }}
               >
                 
                 {/* Speaker Grill / Dynamic Island */}
