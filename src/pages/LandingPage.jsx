@@ -302,7 +302,7 @@ const LandingPage = () => {
       </header>
 
       {/* 2. HERO SECTION */}
-      <section id="home" className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 md:pt-40 md:pb-36 bg-gradient-to-b from-blue-900/10 via-slate-100/30 to-transparent overflow-hidden">
+      <section id="home" className="relative pt-20 pb-16 sm:pt-24 sm:pb-20 md:pt-28 md:pb-28 bg-gradient-to-b from-blue-900/10 via-slate-100/30 to-transparent overflow-hidden">
         {/* Background Decorative Rings/Glows */}
         <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-br from-blue-400/15 via-[#C8A951]/10 to-transparent blur-[120px] rounded-full pointer-events-none -z-10 hidden sm:block" />
         
