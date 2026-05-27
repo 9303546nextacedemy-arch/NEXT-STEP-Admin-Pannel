@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  onSnapshot
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { normalizeSubjects, newSubjectId } from "../utils/courseSubjects";
@@ -24,6 +25,18 @@ export const courseService = {
       id: doc.id,
       ...doc.data()
     }));
+  },
+
+  // Subscribe to all courses in real-time
+  subscribeAllCourses: (onUpdate, onError) => {
+    const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (querySnapshot) => {
+      const courses = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      onUpdate(courses);
+    }, onError);
   },
 
   getCourseById: async (courseId) => {

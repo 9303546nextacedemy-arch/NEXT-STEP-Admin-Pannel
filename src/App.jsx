@@ -10,6 +10,8 @@ import Courses from './pages/Courses';
 import Lectures from './pages/Lectures';
 import Notes from './pages/Notes';
 import Projects from './pages/Projects';
+import Reviews from './pages/Reviews';
+import Admissions from './pages/Admissions';
 import AppRegistrations from './pages/AppRegistrations';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
@@ -123,6 +125,8 @@ function App() {
           <Route path="notes" element={<Notes />} />
           <Route path="live-classes" element={<Navigate to="/lectures" replace />} />
           <Route path="projects" element={<Projects />} />
+          <Route path="reviews" element={<Reviews />} />
+          <Route path="admissions" element={<Admissions />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="teachers" element={<Teachers />} />
           <Route path="settings" element={<Settings />} />

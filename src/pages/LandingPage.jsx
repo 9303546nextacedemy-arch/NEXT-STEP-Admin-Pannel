@@ -4,64 +4,127 @@ import {
   BookOpen, ShieldCheck, Layers, Video, Smartphone, Users, Award, 
   Phone, ArrowRight, Lock, Menu, X, ExternalLink, Star, CheckCircle2, 
   MessageSquare, ChevronRight, Play, Laptop, HelpCircle, Activity, 
-  MapPin, Mail, MessageCircle, Send, Check
+  MapPin, Mail, MessageCircle, Send, Check, Loader2
 } from 'lucide-react';
 import { courseService } from '../services/courseService';
 import { projectService } from '../services/projectService';
-import { getAdminUrl } from '../utils/subdomain';
+import { reviewService } from '../services/reviewService';
+import { admissionService } from '../services/admissionService';
+import { teacherService } from '../services/teacherService';
+
 
 const LandingPage = () => {
   const [courses, setCourses] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingReviews, setLoadingReviews] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
   
-  // Contact Form State
-  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
-  const [formSubmitted, setFormSubmitted] = useState(false);
+  // Review Modal State
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ author: '', course: '', rating: 5, review: '' });
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  // Admission Form State
+  const [admissionForm, setAdmissionForm] = useState({ name: '', email: '', phone: '', course: '', message: '' });
+  const [admissionSubmitted, setAdmissionSubmitted] = useState(false);
+  const [submittingAdmission, setSubmittingAdmission] = useState(false);
 
   useEffect(() => {
     // Scroll behavior
     document.documentElement.style.scrollBehavior = 'smooth';
     
-    // Fetch dynamic data
-    loadCourses();
-    loadProjects();
+    // Subscribe to Courses in real-time
+    setLoadingCourses(true);
+    const unsubscribeCourses = courseService.subscribeAllCourses(
+      (data) => {
+        const activeCourses = data.filter(c => c.isActive !== false);
+        setCourses(activeCourses);
+        setLoadingCourses(false);
+      },
+      (error) => {
+        console.error("Error subscribing to courses:", error);
+        setLoadingCourses(false);
+      }
+    );
+
+    // Subscribe to Projects in real-time
+    setLoadingProjects(true);
+    const unsubscribeProjects = projectService.subscribeAllProjects(
+      (data) => {
+        const activeProjects = data.filter(p => p.isActive !== false);
+        setProjects(activeProjects);
+        setLoadingProjects(false);
+      },
+      (error) => {
+        console.error("Error subscribing to projects:", error);
+        setLoadingProjects(false);
+      }
+    );
+
+    // Subscribe to Reviews in real-time
+    setLoadingReviews(true);
+    let unsubscribeReviews = null;
+    const setupReviewSubscription = async () => {
+      try {
+        const unsub = await reviewService.subscribeApprovedReviews(
+          (data) => {
+            setReviews(data);
+            setLoadingReviews(false);
+          },
+          (error) => {
+            console.error("Error subscribing to reviews:", error);
+            setLoadingReviews(false);
+          }
+        );
+        unsubscribeReviews = unsub;
+      } catch (err) {
+        console.error("Error setting up reviews subscription:", err);
+        setLoadingReviews(false);
+      }
+    };
+    setupReviewSubscription();
+    
+    // Fetch Teachers once
+    teacherService.getAllTeachers()
+      .then(data => setTeachers(data))
+      .catch(err => console.error('Error fetching teachers:', err));
     
     return () => {
       document.documentElement.style.scrollBehavior = 'auto';
+      if (unsubscribeCourses) unsubscribeCourses();
+      if (unsubscribeProjects) unsubscribeProjects();
+      if (unsubscribeReviews) unsubscribeReviews();
     };
   }, []);
 
-  const loadCourses = async () => {
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
     try {
-      setLoadingCourses(true);
-      const data = await courseService.getAllCourses();
-      // Filter out only active courses for public website
-      const activeCourses = data.filter(c => c.isActive !== false);
-      setCourses(activeCourses);
+      setSubmittingReview(true);
+      await reviewService.addReview({
+        author: reviewForm.author,
+        course: reviewForm.course,
+        rating: Number(reviewForm.rating),
+        review: reviewForm.review
+      });
+      setReviewSubmitted(true);
+      setTimeout(() => {
+        setIsReviewModalOpen(false);
+        setReviewSubmitted(false);
+        setReviewForm({ author: '', course: '', rating: 5, review: '' });
+      }, 3000);
     } catch (error) {
-      console.error("Error loading courses for landing page:", error);
+      alert("Failed to submit review: " + error.message);
     } finally {
-      setLoadingCourses(false);
-    }
-  };
-
-  const loadProjects = async () => {
-    try {
-      setLoadingProjects(true);
-      const data = await projectService.getAllProjects();
-      // Filter out only active projects
-      const activeProjects = data.filter(p => p.isActive !== false);
-      setProjects(activeProjects);
-    } catch (error) {
-      console.error("Error loading projects for landing page:", error);
-    } finally {
-      setLoadingProjects(false);
+      setSubmittingReview(false);
     }
   };
 
@@ -102,52 +165,29 @@ const LandingPage = () => {
     }
   ];
 
-  // Fallback Projects if Firestore is empty
-  const fallbackProjects = [
-    {
-      id: 'proj-1',
-      title: 'AI-Powered Smart Attendee',
-      shortDescription: 'Facial recognition based smart attendance tracker for colleges.',
-      domain: 'AI Projects',
-      overview: 'A high-performance security and registration platform using OpenCV and Python. It securely registers student faces, verifies identity within 200ms, and updates attendance logs in real time.',
-      themeColor: '#C8A951'
-    },
-    {
-      id: 'proj-2',
-      title: 'Customer Churn Predictor',
-      shortDescription: 'ML model predicting subscriber churn rates with high precision.',
-      domain: 'Machine Learning Projects',
-      overview: 'Using Scikit-learn, Pandas, and XGBoost, this project implements a predictive pipeline analyzing student engagement rates to proactively signal students who require extra mentorship support.',
-      themeColor: '#0B2C5F'
-    },
-    {
-      id: 'proj-3',
-      title: 'Scalable Image Classification Pipeline',
-      shortDescription: 'Cloud-native ML deployment pipeline on AWS/Azure.',
-      domain: 'Cloud Computing Projects',
-      overview: 'Deploys an image recognition model as a microservice using Docker, Kubernetes, and AWS SageMaker, scaling dynamically to handle thousands of requests per second.',
-      themeColor: '#0284c7'
-    },
-    {
-      id: 'proj-4',
-      title: 'Custom Shell & File Manager',
-      shortDescription: 'C-based terminal interface mimicking Unix process environments.',
-      domain: 'Operating System Projects',
-      overview: 'A deep-level academic project implementing process scheduling, custom shell execution, thread forks, memory partition simulation, and deadlock resolution algorithms.',
-      themeColor: '#7C3AED'
-    }
-  ];
-
   const displayedCourses = courses.length > 0 ? courses : fallbackCourses;
-  const displayedProjects = projects.length > 0 ? projects : fallbackProjects;
 
-  const handleContactSubmit = (e) => {
+  const handleAdmissionSubmit = async (e) => {
     e.preventDefault();
-    setFormSubmitted(true);
-    setTimeout(() => {
-      setFormSubmitted(false);
-      setContactForm({ name: '', email: '', subject: '', message: '' });
-    }, 4000);
+    try {
+      setSubmittingAdmission(true);
+      await admissionService.addAdmissionRequest({
+        name: admissionForm.name,
+        email: admissionForm.email,
+        phone: admissionForm.phone,
+        course: admissionForm.course || (displayedCourses[0] ? displayedCourses[0].title : 'General Inquiry'),
+        message: admissionForm.message
+      });
+      setAdmissionSubmitted(true);
+      setTimeout(() => {
+        setAdmissionSubmitted(false);
+        setAdmissionForm({ name: '', email: '', phone: '', course: '', message: '' });
+      }, 5000);
+    } catch (error) {
+      alert("Failed to submit admission request: " + error.message);
+    } finally {
+      setSubmittingAdmission(false);
+    }
   };
 
   const scrollToSection = (id) => {
@@ -167,12 +207,12 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-brand-blue selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-slate-100/70 text-slate-800 font-sans selection:bg-brand-blue selection:text-white overflow-x-hidden">
       
       {/* 1. HEADER / NAVIGATION */}
       <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 glass-morphism border-b border-white/20 bg-white/70 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
+          <div className="flex justify-between items-center h-16 sm:h-20">
             {/* Logo */}
             <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => scrollToSection('home')}>
               <div className="w-11 h-11 rounded-xl bg-white overflow-hidden flex items-center justify-center shadow-md shadow-brand-blue/10 border border-slate-100 p-1 shrink-0">
@@ -203,13 +243,6 @@ const LandingPage = () => {
 
             {/* Action Buttons */}
             <div className="hidden md:flex items-center gap-3">
-              <a 
-                href={getAdminUrl()}
-                className="flex items-center gap-1.5 px-4 py-2 border-2 border-brand-blue/15 text-brand-blue hover:bg-brand-blue/5 text-sm font-bold rounded-xl transition-all"
-              >
-                <Lock size={14} />
-                <span>Admin Login</span>
-              </a>
               <button 
                 onClick={() => scrollToSection('courses')}
                 className="bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-sm px-5 py-2.5 rounded-xl hover:from-amber-600 hover:to-amber-700 transition-all shadow-md shadow-amber-500/20"
@@ -220,13 +253,6 @@ const LandingPage = () => {
 
             {/* Mobile Menu Button */}
             <div className="flex md:hidden items-center gap-2">
-              <a 
-                href={getAdminUrl()} 
-                className="p-2 text-brand-blue bg-brand-blue/5 rounded-lg"
-                title="Admin Login"
-              >
-                <Lock size={18} />
-              </a>
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 text-slate-700 hover:text-brand-blue rounded-lg bg-slate-100 transition-colors"
@@ -262,13 +288,6 @@ const LandingPage = () => {
                   </button>
                 ))}
                 <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
-                  <a 
-                    href={getAdminUrl()}
-                    className="flex items-center justify-center gap-2 w-full py-3 border border-brand-blue/20 text-brand-blue font-bold rounded-xl bg-slate-50"
-                  >
-                    <Lock size={15} />
-                    <span>Admin Panel Access</span>
-                  </a>
                   <button 
                     onClick={() => scrollToSection('courses')}
                     className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-500/20"
@@ -283,7 +302,7 @@ const LandingPage = () => {
       </header>
 
       {/* 2. HERO SECTION */}
-      <section id="home" className="relative pt-32 pb-24 md:pt-40 md:pb-36 bg-gradient-to-b from-blue-900/10 via-white to-white overflow-hidden">
+      <section id="home" className="relative pt-24 pb-16 sm:pt-32 sm:pb-24 md:pt-40 md:pb-36 bg-gradient-to-b from-blue-900/10 via-slate-100/30 to-transparent overflow-hidden">
         {/* Background Decorative Rings/Glows */}
         <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-br from-blue-400/15 via-[#C8A951]/10 to-transparent blur-[120px] rounded-full pointer-events-none -z-10" />
         
@@ -291,13 +310,18 @@ const LandingPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
             
             {/* Left Content */}
-            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+            <motion.div 
+              initial={{ opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              className="lg:col-span-7 space-y-6 text-center lg:text-left"
+            >
               <div className="inline-flex items-center gap-2 bg-[#0B2C5F]/10 border border-[#0B2C5F]/20 text-[#0B2C5F] px-4 py-1.5 rounded-full text-xs font-black tracking-wider uppercase">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 Diploma Students Focus Platform
               </div>
               
-              <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-[#0B2C5F] font-['Outfit'] leading-tight">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-[#0B2C5F] font-['Outfit'] leading-tight">
                 NEXTSTEP <span className="bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">Academy</span>
               </h1>
               
@@ -317,93 +341,113 @@ const LandingPage = () => {
                   { icon: ShieldCheck, text: 'Secure Access System' },
                   { icon: Award, text: 'Learn Anytime, Anywhere' }
                 ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2 p-2.5 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                  <motion.div 
+                    key={idx} 
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    className="flex items-center gap-2 p-2.5 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-default"
+                  >
                     <item.icon className="text-amber-500 shrink-0" size={18} />
                     <span className="text-[13px] font-bold text-slate-700">{item.text}</span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
-                <button
+                <motion.button
                   onClick={() => scrollToSection('courses')}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-brand-blue to-blue-800 text-white font-extrabold text-base rounded-2xl shadow-xl shadow-brand-blue/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-brand-blue to-blue-800 text-white font-extrabold text-base rounded-2xl shadow-xl shadow-brand-blue/20 flex items-center justify-center gap-2 group"
                 >
                   Explore Our Courses
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   onClick={() => scrollToSection('contact')}
-                  className="w-full sm:w-auto px-8 py-3.5 bg-white border-2 border-slate-200 hover:border-brand-blue/30 text-slate-700 font-extrabold text-base rounded-2xl transition-all flex items-center justify-center gap-2 hover:bg-slate-50"
+                  whileHover={{ scale: 1.02, backgroundColor: '#f8fafc' }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full sm:w-auto px-8 py-3.5 bg-white border-2 border-slate-200 hover:border-brand-blue/30 text-slate-700 font-extrabold text-base rounded-2xl transition-all flex items-center justify-center gap-2"
                 >
                   Contact Admin Support
-                </button>
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Right Graphics */}
-            <div className="lg:col-span-5 relative flex justify-center">
-              <div className="relative w-full max-w-[420px] aspect-[4/5] sm:aspect-square lg:aspect-[4/5] rounded-[36px] bg-gradient-to-tr from-[#0B2C5F] to-indigo-900 shadow-2xl p-6 overflow-hidden flex flex-col justify-between">
+            {/* Right Graphics (hidden on mobile, shown on lg) */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.15 }}
+              className="lg:col-span-5 relative justify-center hidden lg:flex"
+            >
+              {/* Decorative Blur */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-brand-blue/10 rounded-full blur-3xl" />
+              
+              {/* iPhone Container */}
+              <motion.div 
+                animate={{ y: [0, -12, 0] }}
+                transition={{ 
+                  duration: 5, 
+                  repeat: Infinity, 
+                  repeatType: "reverse", 
+                  ease: "easeInOut" 
+                }}
+                className="relative w-[300px] h-[600px] bg-slate-900 rounded-[50px] p-3 shadow-2xl border-4 border-slate-800 overflow-hidden ring-4 ring-slate-700/20 z-10 shrink-0"
+              >
                 
-                {/* Decorative particles */}
-                <div className="absolute -top-12 -right-12 w-48 h-48 bg-amber-400/20 rounded-full blur-3xl" />
-                <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-sky-400/20 rounded-full blur-3xl" />
-                <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:16px_16px]" />
+                {/* Speaker Grill / Dynamic Island */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 h-7 w-32 bg-slate-900 rounded-b-2xl z-40 flex items-center justify-center">
+                  <div className="w-10 h-1 bg-slate-800 rounded-full mb-1" />
+                </div>
 
-                {/* Dashboard Widget Interface */}
-                <div className="space-y-4 z-10">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-md flex items-center justify-center">
-                        <Award className="text-amber-400" size={16} />
+                {/* Internal App Screen with real screenshot */}
+                <div className="h-full w-full bg-slate-950 rounded-[40px] relative overflow-hidden flex flex-col">
+                  {/* Simulated Mobile Status Bar */}
+                  <div className="h-10 pt-4 px-6 flex justify-between items-center text-[10px] font-bold text-white/95 shrink-0 z-20 bg-[#0B2C5F]">
+                    <span>9:41</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex gap-[2px] items-end h-2">
+                        <div className="w-[2px] h-[3px] bg-white/90 rounded-[0.5px]" />
+                        <div className="w-[2px] h-[5px] bg-white/90 rounded-[0.5px]" />
+                        <div className="w-[2px] h-[7px] bg-white/90 rounded-[0.5px]" />
+                        <div className="w-[2px] h-[9px] bg-white/90 rounded-[0.5px]" />
                       </div>
-                      <div>
-                        <span className="block text-[10px] text-white/50 uppercase tracking-widest font-bold">LATEST BATCH</span>
-                        <span className="block text-xs font-bold text-white leading-none">Diploma Special AI/ML</span>
+                      <div className="w-5 h-2.5 border border-white/80 rounded-sm p-[1px] flex items-center">
+                        <div className="h-full w-full bg-white rounded-[1px]" />
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-bold uppercase tracking-widest border border-emerald-500/30">Live Now</span>
                   </div>
 
-                  <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[11px] font-bold text-sky-300">CURRICULUM INCLUDES</span>
-                      <span className="text-[11px] text-white/70 font-semibold">100% Practical</span>
-                    </div>
-                    <p className="text-sm font-bold text-white leading-tight">Secure Linux Shell Execution & Classification Algorithms</p>
-                    <div className="w-full bg-white/20 h-1.5 rounded-full mt-3 overflow-hidden">
-                      <div className="bg-amber-400 h-full w-[85%] rounded-full" />
-                    </div>
+                  {/* Real Image Content */}
+                  <div className="flex-1 w-full overflow-hidden bg-slate-950">
+                    <img src="/hero-phone-screenshot.jpg" alt="NEXTSTEP Academy App Dashboard" className="w-full h-full object-cover" />
+                  </div>
+
+                  {/* Simulated Home Indicator Bar */}
+                  <div className="h-6 pb-2 flex items-center justify-center bg-white shrink-0 z-20">
+                    <div className="w-28 h-1 bg-slate-300 rounded-full" />
                   </div>
                 </div>
 
-                {/* Simulated App Stream Widget */}
-                <div className="bg-white rounded-2xl p-4 shadow-xl z-10 border border-slate-100 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-400/30 shrink-0 text-white font-bold">
-                    <Play fill="white" size={18} className="ml-0.5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">SECURE STREAM</span>
-                    <span className="block font-bold text-slate-800 truncate text-sm">OS Process Scheduling.mp4</span>
-                    <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-0.5">
-                      <ShieldCheck size={12} />
-                      No-Download Active Shield
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
             
           </div>
         </div>
       </section>
 
       {/* 3. ABOUT US & GOALS */}
-      <section id="about" className="py-20 bg-white border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="about" className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-16 bg-white rounded-[40px] border border-slate-200/60 shadow-premium"
+        >
           
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-3">
             <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Platform Overview</span>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">About NEXTSTEP Academy</h2>
             <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full" />
@@ -486,23 +530,29 @@ const LandingPage = () => {
             </div>
           </div>
           
-        </div>
+        </motion.div>
       </section>
 
       {/* 4. WHY CHOOSE US SECTION */}
-      <section className="py-20 bg-slate-50 border-t border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-16 bg-gradient-to-br from-slate-900 via-[#0B2C5F] to-slate-900 text-white rounded-[24px] sm:rounded-[40px] border border-slate-800 shadow-2xl"
+        >
           
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Excellence Guaranteed</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Why Choose NEXTSTEP Academy?</h2>
-            <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full" />
-            <p className="text-slate-500 font-medium text-sm pt-2">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-3">
+            <span className="text-amber-400 font-bold uppercase tracking-widest text-xs">Excellence Guaranteed</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-white font-['Outfit']">Why Choose NEXTSTEP Academy?</h2>
+            <div className="w-16 h-1 bg-amber-400 mx-auto rounded-full" />
+            <p className="text-slate-300 font-medium text-sm pt-2">
               Our e-learning infrastructure is custom-built with multiple core advantages specifically aligned for competitive diploma syllabi.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[
               { icon: ShieldCheck, title: 'Secure Learning Platform', desc: 'Ultimate streaming protection prevent unauthorized downloads or credential sharing.' },
               { icon: Smartphone, title: 'Mobile-Friendly Access', desc: 'Fully optimized layouts render beautifully on smartphones for learning on the go.' },
@@ -514,26 +564,36 @@ const LandingPage = () => {
               { icon: BookOpen, title: 'Notes & Study Materials', desc: 'Structured PDF guides, scheduling matrices, and exam reference blueprints.' },
               { icon: Activity, title: 'Student Progress Tracking', desc: 'Real-time dashboard displays completed lectures, test schedules, and overall analytics.' }
             ].map((benefit, idx) => (
-              <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-premium hover:border-[#0B2C5F]/20 hover:scale-[1.01] transition-all flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-[#0B2C5F] shrink-0 border border-slate-100 group-hover:bg-brand-blue">
-                  <benefit.icon size={20} className="text-brand-blue" />
+              <motion.div 
+                key={idx} 
+                whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.08)' }}
+                className="bg-white/5 p-6 rounded-2xl border border-white/10 shadow-lg flex items-start gap-4 transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-amber-400 shrink-0 border border-white/10">
+                  <benefit.icon size={20} className="text-amber-400" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="font-extrabold text-slate-800 text-sm">{benefit.title}</h4>
-                  <p className="text-slate-500 text-xs leading-relaxed font-semibold">{benefit.desc}</p>
+                  <h4 className="font-extrabold text-white text-sm">{benefit.title}</h4>
+                  <p className="text-slate-300 text-xs leading-relaxed font-medium">{benefit.desc}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 5. COURSES SECTION */}
-      <section id="courses" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="courses" className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-16 bg-white rounded-[24px] sm:rounded-[40px] border border-slate-200/60 shadow-premium"
+        >
           
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-12 gap-4">
             <div className="space-y-2">
               <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Academics</span>
               <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Featured Academic Batches</h2>
@@ -550,16 +610,17 @@ const LandingPage = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
             {displayedCourses.map((course) => {
               // Ensure we normalize subjects if format differs
               const subjectsList = course.subjects || [];
               const price = course.price ? (String(course.price).includes('₹') ? course.price : `₹${course.price}`) : '₹5,999';
               
               return (
-                <div 
+                <motion.div 
                   key={course.id} 
-                  className="bg-white rounded-3xl border border-slate-100 shadow-premium hover:border-[#0B2C5F]/20 card-hover flex flex-col justify-between overflow-hidden relative group"
+                  whileHover={{ y: -6, scale: 1.01 }}
+                  className="bg-white rounded-3xl border border-slate-100 shadow-premium hover:border-[#0B2C5F]/20 flex flex-col justify-between overflow-hidden relative group transition-all"
                 >
                   {/* Thumbnail / Header Area */}
                   <div className="relative h-48 bg-gradient-to-br from-[#0B2C5F] via-[#153e77] to-indigo-950 p-6 flex flex-col justify-between text-white overflow-hidden shrink-0">
@@ -639,19 +700,25 @@ const LandingPage = () => {
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 6. PROJECTS SECTION */}
-      <section id="projects" className="py-20 bg-slate-50 border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="projects" className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-16 bg-slate-50 rounded-[24px] sm:rounded-[40px] border border-slate-200/60 shadow-premium"
+        >
           
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-3">
             <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Exhibits</span>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Student Coding Projects</h2>
             <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full" />
@@ -660,61 +727,85 @@ const LandingPage = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {displayedProjects.map((project) => (
-              <div 
-                key={project.id} 
-                className="bg-white p-6 rounded-3xl border border-slate-100 shadow-premium hover:border-[#0B2C5F]/20 hover:scale-[1.01] transition-all flex flex-col justify-between relative overflow-hidden"
-              >
-                {/* Visual Accent bar */}
-                <div 
-                  className="absolute top-0 left-0 right-0 h-2" 
-                  style={{ backgroundColor: project.themeColor || '#C8A951' }} 
-                />
+          {loadingProjects ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-premium animate-pulse h-48">
+                  <div className="h-4 bg-slate-200 rounded w-1/4 mb-4" />
+                  <div className="h-6 bg-slate-200 rounded w-3/4 mb-3" />
+                  <div className="h-4 bg-slate-200 rounded w-full mb-2" />
+                  <div className="h-4 bg-slate-200 rounded w-2/3" />
+                </div>
+              ))}
+            </div>
+          ) : projects.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-slate-400 font-semibold text-sm">No projects available yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {projects.map((project) => (
+                <motion.div 
+                  key={project.id} 
+                  whileHover={{ y: -6, scale: 1.02 }}
+                  className="bg-white p-6 rounded-3xl border border-slate-100 shadow-premium hover:border-[#0B2C5F]/20 transition-all flex flex-col justify-between relative overflow-hidden"
+                >
+                  {/* Visual Accent bar */}
+                  <div 
+                    className="absolute top-0 left-0 right-0 h-2" 
+                    style={{ backgroundColor: project.themeColor || '#C8A951' }} 
+                  />
 
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-center justify-between">
-                    <span 
-                      className="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border"
-                      style={{ 
-                        color: project.themeColor || '#C8A951',
-                        borderColor: `${project.themeColor || '#C8A951'}30`,
-                        backgroundColor: `${project.themeColor || '#C8A951'}10`
-                      }}
-                    >
-                      {project.domain || 'Software'}
-                    </span>
-                    <Layers size={14} className="text-slate-400" />
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border"
+                        style={{ 
+                          color: project.themeColor || '#C8A951',
+                          borderColor: `${project.themeColor || '#C8A951'}30`,
+                          backgroundColor: `${project.themeColor || '#C8A951'}10`
+                        }}
+                      >
+                        {project.domain || 'Software'}
+                      </span>
+                      <Layers size={14} className="text-slate-400" />
+                    </div>
+
+                    <h3 className="font-extrabold text-base text-slate-800 line-clamp-1">
+                      {project.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium line-clamp-3 leading-relaxed">
+                      {project.shortDescription || project.overview}
+                    </p>
                   </div>
 
-                  <h3 className="font-extrabold text-base text-slate-800 line-clamp-1">
-                    {project.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium line-clamp-3 leading-relaxed">
-                    {project.shortDescription || project.overview}
-                  </p>
-                </div>
+                  <div className="border-t border-slate-50 mt-6 pt-4">
+                    <button
+                      onClick={() => setSelectedProject(project)}
+                      className="text-xs font-extrabold flex items-center gap-1.5 transition-colors"
+                      style={{ color: project.themeColor || '#0B2C5F' }}
+                    >
+                      <span>View Specifications</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
-                <div className="border-t border-slate-50 mt-6 pt-4">
-                  <button
-                    onClick={() => setSelectedProject(project)}
-                    className="text-xs font-extrabold flex items-center gap-1.5 transition-colors"
-                    style={{ color: project.themeColor || '#0B2C5F' }}
-                  >
-                    <span>View Specifications</span>
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-        </div>
+        </motion.div>
       </section>
 
       {/* 7. MOBILE APP SECTION */}
-      <section id="mobile-app" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="mobile-app" className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-16 bg-white rounded-[24px] sm:rounded-[40px] border border-slate-200/60 shadow-premium"
+        >
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
@@ -722,74 +813,52 @@ const LandingPage = () => {
             <div className="lg:col-span-5 flex justify-center order-2 lg:order-1 relative">
               {/* Decorative Blur */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-brand-blue/10 rounded-full blur-3xl" />
-              
               {/* iPhone Container */}
-              <div className="relative w-[300px] h-[600px] bg-slate-900 rounded-[50px] p-3 shadow-2xl border-4 border-slate-800 overflow-hidden ring-4 ring-slate-700/20 z-10 shrink-0">
+              <motion.div 
+                animate={{ y: [0, -12, 0] }}
+                transition={{ 
+                  duration: 5, 
+                  repeat: Infinity, 
+                  repeatType: "reverse", 
+                  ease: "easeInOut" 
+                }}
+                className="relative w-[240px] h-[480px] sm:w-[300px] sm:h-[600px] bg-slate-900 rounded-[40px] sm:rounded-[50px] p-3 shadow-2xl border-4 border-slate-800 overflow-hidden ring-4 ring-slate-700/20 z-10 shrink-0"
+              >
                 
                 {/* Speaker Grill / Dynamic Island */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 h-7 w-32 bg-slate-900 rounded-b-2xl z-40 flex items-center justify-center">
                   <div className="w-10 h-1 bg-slate-800 rounded-full mb-1" />
                 </div>
 
-                {/* Internal App Screen */}
-                <div className="h-full w-full bg-[#081b37] rounded-[40px] p-4 pt-8 flex flex-col justify-between text-white relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:12px_12px]" />
-
-                  {/* Header inside App */}
-                  <div className="flex justify-between items-center z-10">
-                    <div>
-                      <span className="block text-[8px] text-white/50 uppercase tracking-widest font-black leading-none">STUDENT BATCH</span>
-                      <span className="block text-xs font-black text-amber-400 leading-tight">Operating Systems</span>
-                    </div>
-                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/80">
-                      <Users size={12} />
-                    </div>
-                  </div>
-
-                  {/* Simulated App Content Body */}
-                  <div className="my-auto space-y-4 z-10 py-6">
-                    {/* OTP Shield Banner */}
-                    <div className="p-3 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md space-y-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Lock size={12} className="text-amber-400" />
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">Security Shield Active</span>
+                {/* Internal App Screen with real screenshot */}
+                <div className="h-full w-full bg-slate-950 rounded-[40px] relative overflow-hidden flex flex-col">
+                  {/* Simulated Mobile Status Bar */}
+                  <div className="h-10 pt-4 px-6 flex justify-between items-center text-[10px] font-bold text-white/95 shrink-0 z-20 bg-[#0B2C5F]">
+                    <span>9:41</span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex gap-[2px] items-end h-2">
+                        <div className="w-[2px] h-[3px] bg-white/90 rounded-[0.5px]" />
+                        <div className="w-[2px] h-[5px] bg-white/90 rounded-[0.5px]" />
+                        <div className="w-[2px] h-[7px] bg-white/90 rounded-[0.5px]" />
+                        <div className="w-[2px] h-[9px] bg-white/90 rounded-[0.5px]" />
                       </div>
-                      <p className="text-[9px] text-white/80 leading-relaxed font-semibold">OTP Login based authentication mapped uniquely to your smartphone IMEI container.</p>
-                    </div>
-
-                    {/* Quick Lectures Lists inside App */}
-                    <div className="space-y-2">
-                      <span className="block text-[8px] uppercase tracking-wider text-white/40 font-black">Video Modules</span>
-                      {[
-                        { title: 'Lecture 1: Scheduling Alg.mp4', active: true },
-                        { title: 'Lecture 2: Memory Allocation.mp4', active: false },
-                        { title: 'Lecture 3: Deadlock Handler.mp4', active: false }
-                      ].map((vid, idx) => (
-                        <div key={idx} className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${vid.active ? 'bg-[#C8A951]/20 border-[#C8A951]/30' : 'bg-white/5 border-white/5'}`}>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-5 h-5 rounded bg-white/10 flex items-center justify-center shrink-0">
-                              <Play size={10} className={vid.active ? 'text-amber-400' : 'text-white/60'} />
-                            </div>
-                            <span className="text-[10px] font-bold truncate text-white/95">{vid.title}</span>
-                          </div>
-                          {vid.active ? <span className="text-[8px] bg-emerald-500 text-white font-extrabold px-1 rounded">Stream</span> : <Lock size={10} className="text-white/30 shrink-0" />}
-                        </div>
-                      ))}
+                      <div className="w-5 h-2.5 border border-white/80 rounded-sm p-[1px] flex items-center">
+                        <div className="h-full w-full bg-white rounded-[1px]" />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Custom Tab bar inside App */}
-                  <div className="bg-white/5 backdrop-blur-md border border-white/10 p-2 rounded-2xl flex justify-between items-center z-10">
-                    {['Home', 'Notes', 'Live', 'Profile'].map((tb, idx) => (
-                      <span key={tb} className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${idx === 0 ? 'bg-amber-400 text-slate-900' : 'text-white/70'}`}>
-                        {tb}
-                      </span>
-                    ))}
+                  {/* Real Image Content */}
+                  <div className="flex-1 w-full overflow-hidden bg-slate-950">
+                    <img src="/ecosystem-phone-screenshot.jpg" alt="NEXTSTEP Academy App Dashboard" className="w-full h-full object-cover" />
                   </div>
 
+                  {/* Simulated Home Indicator Bar */}
+                  <div className="h-6 pb-2 flex items-center justify-center bg-white shrink-0 z-20">
+                    <div className="w-28 h-1 bg-slate-300 rounded-full" />
+                  </div>
                 </div>
-
-              </div>
+              </motion.div>
             </div>
 
             {/* Right Information Details */}
@@ -845,22 +914,28 @@ const LandingPage = () => {
 
           </div>
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 8. LIVE CLASSES SECTION */}
-      <section className="py-20 bg-slate-50 border-t border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-16 bg-gradient-to-br from-[#0B2C5F] via-[#0b254a] to-slate-950 text-white rounded-[24px] sm:rounded-[40px] border border-slate-800 shadow-2xl"
+        >
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
             {/* Left Content */}
             <div className="lg:col-span-7 space-y-6">
-              <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Real-Time Learning</span>
-              <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Interactive Live Classes</h2>
-              <div className="w-16 h-1 bg-amber-500 rounded-full" />
+              <span className="text-amber-400 font-bold uppercase tracking-widest text-xs">Real-Time Learning</span>
+              <h2 className="text-3xl sm:text-4xl font-black text-white font-['Outfit']">Interactive Live Classes</h2>
+              <div className="w-16 h-1 bg-amber-400 rounded-full" />
               
-              <p className="text-slate-600 leading-relaxed font-semibold text-base">
+              <p className="text-slate-300 leading-relaxed font-semibold text-base">
                 Bridge the digital gap. Our interactive live stream system helps students connect directly with industry engineering mentors in scheduled video forums.
               </p>
 
@@ -871,12 +946,12 @@ const LandingPage = () => {
                   { title: 'Direct Access to Meeting Links', desc: 'Secure Google Meet/Zoom integrations structured cleanly in class schedules.' }
                 ].map((item, idx) => (
                   <div key={idx} className="flex gap-3">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-brand-blue">
+                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-amber-400 border border-white/10">
                       <Video size={14} />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-slate-800 text-sm">{item.title}</h4>
-                      <p className="text-slate-500 text-xs mt-0.5 leading-relaxed font-semibold">{item.desc}</p>
+                      <h4 className="font-extrabold text-white text-sm">{item.title}</h4>
+                      <p className="text-slate-300 text-xs mt-0.5 leading-relaxed font-semibold">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -885,13 +960,13 @@ const LandingPage = () => {
 
             {/* Right Graphics */}
             <div className="lg:col-span-5 relative flex justify-center">
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-premium p-6 w-full max-w-sm relative overflow-hidden">
-                <div className="flex items-center justify-between mb-4 border-b border-slate-50 pb-3">
+              <div className="bg-white/5 border border-white/10 rounded-3xl shadow-2xl p-6 w-full max-w-sm relative overflow-hidden">
+                <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping shrink-0" />
-                    <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Scheduled Feed</span>
+                    <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-300">Scheduled Feed</span>
                   </div>
-                  <span className="text-xs font-bold text-[#0B2C5F]">Today, 7:30 PM</span>
+                  <span className="text-xs font-bold text-amber-400">Today, 7:30 PM</span>
                 </div>
 
                 <div className="aspect-video rounded-2xl bg-slate-950 flex items-center justify-center text-white relative overflow-hidden">
@@ -905,17 +980,17 @@ const LandingPage = () => {
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  <h4 className="font-bold text-slate-800 text-sm leading-tight">Advanced Deep Learning Neural Networks</h4>
-                  <p className="text-xs text-slate-500 font-medium">Instructor: Prof. Nitin Sinha & Tech Mentors</p>
+                  <h4 className="font-bold text-white text-sm leading-tight">Advanced Deep Learning Neural Networks</h4>
+                  <p className="text-xs text-slate-300 font-medium">Instructor: Prof. Nitin Sinha & Tech Mentors</p>
                   
                   <div className="flex gap-2 pt-2">
                     <button 
                       onClick={() => scrollToSection('courses')}
-                      className="flex-1 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold shadow hover:bg-brand-blue/95 transition-all text-center"
+                      className="flex-1 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-amber-500/25 transition-all text-center"
                     >
                       Join Class Room
                     </button>
-                    <button className="px-3.5 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all">Syllabus</button>
+                    <button className="px-3.5 py-2 bg-white/10 text-white rounded-xl text-xs font-bold hover:bg-white/20 transition-all">Syllabus</button>
                   </div>
                 </div>
 
@@ -924,23 +999,29 @@ const LandingPage = () => {
 
           </div>
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 9. SECURITY CORE SHIELD SECTION */}
-      <section id="security" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="security" className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-16 bg-gradient-to-br from-emerald-950 via-slate-950 to-emerald-950 text-white rounded-[24px] sm:rounded-[40px] border border-emerald-900 shadow-2xl"
+        >
           
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Shield System</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Secure Learning Environment</h2>
-            <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full" />
-            <p className="text-slate-500 font-semibold text-sm pt-2">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-3">
+            <span className="text-amber-400 font-bold uppercase tracking-widest text-xs">Shield System</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-white font-['Outfit']">Secure Learning Environment</h2>
+            <div className="w-16 h-1 bg-amber-400 mx-auto rounded-full" />
+            <p className="text-emerald-100/70 font-semibold text-sm pt-2">
               Our industry-grade protection framework is engineered directly to guard resources, prevent copycat activity, and assure verified students of the highest content integrity.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-8">
             {[
               { icon: ShieldCheck, title: 'OTP Authentication Shield', desc: 'Secure verification binds student identity uniquely to a single mobile container.' },
               { icon: Lock, title: 'Secure Video HLS Streaming', desc: 'Encrypted segment parsing prevents screen scraping tools or raw video URL scraping.' },
@@ -949,30 +1030,40 @@ const LandingPage = () => {
               { icon: Lock, title: 'Screenshot Capture Block', desc: 'Underlying Capacitor components block device keys to safeguard text notes and diagrams.' },
               { icon: ShieldCheck, title: 'Content Access Shield', desc: 'Granular admin dashboard oversight allows instantaneous session termination and security reviews.' }
             ].map((shield, idx) => (
-              <div key={idx} className="bg-slate-50 p-8 rounded-3xl border border-slate-100 shadow-premium hover:border-[#0B2C5F]/20 transition-all flex flex-col justify-between">
+              <motion.div 
+                key={idx} 
+                whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.08)' }}
+                className="bg-white/5 p-8 rounded-3xl border border-white/10 shadow-lg flex flex-col justify-between transition-all"
+              >
                 <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
                     <shield.icon size={24} />
                   </div>
-                  <h3 className="font-extrabold text-slate-800 text-lg leading-tight">{shield.title}</h3>
-                  <p className="text-slate-500 text-xs leading-relaxed font-semibold">{shield.desc}</p>
+                  <h3 className="font-extrabold text-white text-lg leading-tight">{shield.title}</h3>
+                  <p className="text-slate-300 text-xs leading-relaxed font-semibold">{shield.desc}</p>
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-600 tracking-wider pt-6">
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-400 tracking-wider pt-6">
                   <ShieldCheck size={12} />
                   <span>Fully Integrated</span>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 10. SYSTEM TOUR / FEATURES OVERVIEW */}
-      <section className="py-20 bg-slate-50 border-t border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-16 bg-white rounded-[40px] border border-slate-200/60 shadow-premium"
+        >
           
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-3">
             <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Inside the Platform</span>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Robust Digital Infrastructure</h2>
             <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full" />
@@ -984,9 +1075,12 @@ const LandingPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* Admin Panel Card */}
-            <div className="bg-white p-8 rounded-[36px] border border-slate-100 shadow-premium flex flex-col justify-between hover:border-[#0B2C5F]/20 transition-all">
+            <motion.div 
+              whileHover={{ scale: 1.01 }}
+              className="bg-slate-50 p-8 rounded-[36px] border border-slate-200/60 shadow-premium flex flex-col justify-between hover:border-[#0B2C5F]/20 transition-all"
+            >
               <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+                <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-xl bg-slate-900 flex items-center justify-center text-amber-400 shrink-0">
                       <Laptop size={20} />
@@ -1013,7 +1107,7 @@ const LandingPage = () => {
                     'FCM Push Notification Hub',
                     'Public Case Studies / Projects Hub'
                   ].map((feat, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
                       <CheckCircle2 size={14} className="text-amber-500 shrink-0" />
                       <span>{feat}</span>
                     </div>
@@ -1021,20 +1115,16 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 mt-8 pt-5">
-                <a 
-                  href={getAdminUrl()}
-                  className="w-full py-3 bg-[#0B2C5F] text-white hover:bg-slate-900 rounded-2xl font-bold text-xs uppercase tracking-wider text-center block transition-all shadow-md shadow-brand-blue/15"
-                >
-                  Access Admin Panel console
-                </a>
-              </div>
-            </div>
+
+            </motion.div>
 
             {/* Student Dashboard Card */}
-            <div className="bg-white p-8 rounded-[36px] border border-slate-100 shadow-premium flex flex-col justify-between hover:border-[#0B2C5F]/20 transition-all">
+            <motion.div 
+              whileHover={{ scale: 1.01 }}
+              className="bg-slate-50 p-8 rounded-[36px] border border-slate-200/60 shadow-premium flex flex-col justify-between hover:border-[#0B2C5F]/20 transition-all"
+            >
               <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+                <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-brand-blue shrink-0">
                       <Smartphone size={20} />
@@ -1061,7 +1151,7 @@ const LandingPage = () => {
                     'Mentorship Live Meeting Links',
                     'Broadcast Notification cards'
                   ].map((feat, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
                       <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
                       <span>{feat}</span>
                     </div>
@@ -1069,67 +1159,123 @@ const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 mt-8 pt-5">
+              <div className="border-t border-slate-150 mt-8 pt-5">
                 <button 
                   onClick={() => scrollToSection('courses')}
-                  className="w-full py-3 bg-white border-2 border-slate-200 text-slate-700 hover:border-brand-blue hover:text-brand-blue rounded-2xl font-bold text-xs uppercase tracking-wider text-center block transition-all"
+                  className="w-full py-3.5 bg-white border-2 border-slate-200 text-slate-700 hover:border-brand-blue hover:text-brand-blue rounded-2xl font-bold text-xs uppercase tracking-wider text-center block transition-all hover:scale-[1.01]"
                 >
                   Start Student Journey
                 </button>
               </div>
-            </div>
+            </motion.div>
 
           </div>
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 11. TESTIMONIALS SECTION */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-16 bg-slate-50 rounded-[24px] sm:rounded-[40px] border border-slate-200/60 shadow-premium"
+        >
           
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+          <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-4">
             <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Endorsements</span>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Diploma Student Reviews</h2>
             <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full" />
             <p className="text-slate-500 font-semibold text-sm pt-2">
               Read how our dedicated e-learning focus helps diploma candidates boost technical competence and secure exceptional career opportunities.
             </p>
+            <div className="pt-2">
+              <button 
+                onClick={() => setIsReviewModalOpen(true)}
+                className="inline-flex items-center gap-2 bg-[#0B2C5F] text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md shadow-brand-blue/15 hover:scale-[1.01] active:scale-[0.99] transition-all"
+              >
+                <MessageSquare size={14} />
+                <span>Share Your Review</span>
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { review: "“NEXTSTEP Academy helped me understand AI and ML algorithms in a very simple, direct way. The project reviews made me highly confident.”", author: "Diploma Student", course: "AI & ML Algorithm Batch" },
-              { review: "“The live interactive sessions and step-by-step project blueprints greatly improved my practical engineering skills. The dashboard speeds are excellent.”", author: "IT Student", course: "Cloud Deployment Batch" },
-              { review: "“Best secure learning platform designed cleanly for diploma engineers. Highly recommend to all students seeking actual software skills.”", author: "Computer Engineering Student", course: "Operating Systems Batch" }
-            ].map((review, idx) => (
-              <div key={idx} className="bg-slate-50 p-8 rounded-3xl border border-slate-100 shadow-premium hover:border-[#0B2C5F]/20 transition-all flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex gap-1 text-amber-400">
-                    {[...Array(5)].map((_, i) => <Star key={i} size={16} fill="#f59e0b" />)}
+          {loadingReviews ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="bg-slate-50 p-8 rounded-3xl border border-slate-100 shadow-premium animate-pulse flex flex-col justify-between h-48">
+                  <div className="space-y-4">
+                    <div className="flex gap-1">
+                      {[...Array(5)].map((_, idx) => <div key={idx} className="w-4 h-4 bg-slate-200 rounded-full" />)}
+                    </div>
+                    <div className="h-4 bg-slate-200 rounded w-full" />
+                    <div className="h-4 bg-slate-200 rounded w-2/3" />
                   </div>
-                  <p className="text-slate-600 text-sm leading-relaxed font-bold italic">{review.review}</p>
-                </div>
-                
-                <div className="border-t border-slate-100 mt-6 pt-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0B2C5F] text-amber-400 font-black text-sm flex items-center justify-center shrink-0">
-                    {review.author[0]}
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-slate-800 text-xs">{review.author}</h4>
-                    <span className="text-[10px] text-slate-400 font-bold block">{review.course}</span>
+                  <div className="border-t border-slate-100 mt-6 pt-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-200 shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <div className="h-3 bg-slate-200 rounded w-1/3" />
+                      <div className="h-2 bg-slate-200 rounded w-1/2" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-200 shadow-premium">
+              <MessageSquare size={40} className="mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-500 font-semibold text-sm">No student reviews yet. Be the first to share your experience!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {reviews.map((review) => (
+                <motion.div 
+                  key={review.id} 
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  className="bg-white p-8 rounded-3xl border border-slate-100 shadow-premium hover:border-[#0B2C5F]/20 transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-4">
+                    <div className="flex gap-1 text-amber-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          size={16} 
+                          fill={i < (review.rating || 5) ? "#f59e0b" : "transparent"} 
+                          className={i < (review.rating || 5) ? "text-amber-500" : "text-slate-300"} 
+                        />
+                      ))}
+                    </div>
+                    <p className="text-slate-600 text-sm leading-relaxed font-bold italic">“{review.review}”</p>
+                  </div>
+                  
+                  <div className="border-t border-slate-100 mt-6 pt-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#0B2C5F] text-amber-400 font-black text-sm flex items-center justify-center shrink-0">
+                      {(review.author || 'S')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-800 text-xs">{review.author}</h4>
+                      <span className="text-[10px] text-slate-400 font-bold block">{review.course}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 12. CONTACT US SECTION */}
-      <section id="contact" className="py-20 bg-slate-50 border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="contact" className="py-12 bg-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 sm:py-16 bg-white rounded-[24px] sm:rounded-[40px] border border-slate-200/60 shadow-premium"
+        >
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
             
@@ -1146,9 +1292,10 @@ const LandingPage = () => {
               <div className="space-y-4 pt-4">
                 
                 {/* Mobile call */}
-                <a 
+                <motion.a 
                   href="tel:9168482314"
-                  className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm hover:border-[#0B2C5F]/20 hover:scale-[1.01] transition-all"
+                  whileHover={{ y: -2, scale: 1.01 }}
+                  className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/60 shadow-sm hover:border-[#0B2C5F]/20 transition-all block animate-none"
                 >
                   <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-brand-blue shrink-0">
                     <Phone size={18} />
@@ -1157,14 +1304,15 @@ const LandingPage = () => {
                     <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Direct Call support</span>
                     <span className="block font-black text-slate-800 text-base leading-none">9168482314</span>
                   </div>
-                </a>
+                </motion.a>
 
                 {/* WhatsApp Support */}
-                <a 
+                <motion.a 
                   href="https://wa.me/919168482314?text=Hi%20NEXTSTEP%20Academy,%20I%20want%20to%20know%20more%20about%20your%20courses."
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm hover:border-emerald-500/20 hover:scale-[1.01] transition-all"
+                  whileHover={{ y: -2, scale: 1.01 }}
+                  className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/60 shadow-sm hover:border-emerald-500/20 transition-all block animate-none"
                 >
                   <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                     <MessageCircle size={18} />
@@ -1173,7 +1321,7 @@ const LandingPage = () => {
                     <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Chat on WhatsApp</span>
                     <span className="block font-black text-slate-800 text-base leading-none">Start WhatsApp Chat</span>
                   </div>
-                </a>
+                </motion.a>
 
                 {/* Info alert */}
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/50 flex gap-3 text-xs text-amber-800 font-bold leading-relaxed">
@@ -1185,85 +1333,110 @@ const LandingPage = () => {
             </div>
 
             {/* Right Quick Inquiry Form */}
-            <div className="lg:col-span-7 bg-white p-8 rounded-3xl border border-slate-100 shadow-premium relative overflow-hidden">
+            <div className="lg:col-span-7 bg-slate-50 p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-premium relative overflow-hidden">
               
-              <h3 className="font-extrabold text-xl text-brand-blue mb-2 font-['Outfit']">Send a Message</h3>
-              <p className="text-slate-400 text-xs font-semibold mb-6">Fill out the fast form below to request syllabus briefs or general platform queries.</p>
+              <h3 className="font-extrabold text-xl text-brand-blue mb-2 font-['Outfit']">Request Admission</h3>
+              <p className="text-slate-400 text-xs font-semibold mb-6">Fill out the fast form below to submit your enrollment queries and secure your academic seat.</p>
 
-              {formSubmitted ? (
+              {admissionSubmitted ? (
                 <div className="absolute inset-0 bg-white/95 z-10 flex flex-col items-center justify-center p-8 text-center space-y-4">
                   <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-md shadow-emerald-100">
                     <CheckCircle2 size={36} />
                   </div>
-                  <h3 className="font-extrabold text-2xl text-slate-900">Message Received!</h3>
-                  <p className="text-slate-500 text-sm max-w-sm">Thank you for contacting NEXTSTEP Academy. Our support representative will contact you shortly.</p>
+                  <h3 className="font-extrabold text-2xl text-slate-900">Request Submitted!</h3>
+                  <p className="text-slate-500 text-sm max-w-sm">Thank you for contacting NEXTSTEP Academy. Our admissions officer will get in touch with you shortly via phone or email.</p>
                 </div>
               ) : null}
 
-              <form onSubmit={handleContactSubmit} className="space-y-4">
+              <form onSubmit={handleAdmissionSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Full Name</label>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Full Name *</label>
                     <input 
                       type="text" 
                       required
-                      value={contactForm.name}
-                      onChange={(e) => setContactForm({...contactForm, name: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-brand-blue text-sm"
+                      value={admissionForm.name}
+                      onChange={(e) => setAdmissionForm({...admissionForm, name: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-slate-200 bg-white rounded-xl outline-none focus:border-brand-blue text-sm font-semibold"
                       placeholder="e.g. John Doe"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Email Address</label>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Phone Number *</label>
                     <input 
-                      type="email" 
+                      type="tel" 
                       required
-                      value={contactForm.email}
-                      onChange={(e) => setContactForm({...contactForm, email: e.target.value})}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-brand-blue text-sm"
-                      placeholder="e.g. john@student.com"
+                      value={admissionForm.phone}
+                      onChange={(e) => setAdmissionForm({...admissionForm, phone: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-slate-200 bg-white rounded-xl outline-none focus:border-brand-blue text-sm font-semibold"
+                      placeholder="e.g. 9168482314"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Subject / Query Topic</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={contactForm.subject}
-                    onChange={(e) => setContactForm({...contactForm, subject: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-brand-blue text-sm"
-                    placeholder="e.g. Admission in AI & ML batch"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Email Address *</label>
+                    <input 
+                      type="email" 
+                      required
+                      value={admissionForm.email}
+                      onChange={(e) => setAdmissionForm({...admissionForm, email: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-slate-200 bg-white rounded-xl outline-none focus:border-brand-blue text-sm font-semibold"
+                      placeholder="e.g. john@student.com"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Course Interested In *</label>
+                    <select 
+                      required
+                      value={admissionForm.course}
+                      onChange={(e) => setAdmissionForm({...admissionForm, course: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-brand-blue text-sm font-semibold bg-white"
+                    >
+                      <option value="" disabled>Select a course</option>
+                      {displayedCourses.map((c) => (
+                        <option key={c.id} value={c.title}>{c.title}</option>
+                      ))}
+                      <option value="Other / General Inquiry">Other / General Inquiry</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Detail Message</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Detail Message / Query</label>
                   <textarea 
                     rows="4" 
-                    required
-                    value={contactForm.message}
-                    onChange={(e) => setContactForm({...contactForm, message: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-brand-blue text-sm resize-none"
-                    placeholder="Describe your request in detail..."
+                    value={admissionForm.message}
+                    onChange={(e) => setAdmissionForm({...admissionForm, message: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-200 bg-white rounded-xl outline-none focus:border-brand-blue text-sm font-medium resize-none"
+                    placeholder="Describe your request or academic qualifications in detail..."
                   />
                 </div>
 
                 <button 
                   type="submit"
-                  className="w-full py-3 bg-[#0B2C5F] text-white hover:bg-slate-900 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow"
+                  disabled={submittingAdmission}
+                  className="w-full py-3 bg-[#0B2C5F] text-white hover:bg-slate-900 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow disabled:opacity-60"
                 >
-                  <Send size={14} />
-                  <span>Send Message Now</span>
+                  {submittingAdmission ? (
+                    <>
+                      <Loader2 className="animate-spin" size={14} />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      <span>Submit Admission Request</span>
+                    </>
+                  )}
                 </button>
               </form>
-
             </div>
 
           </div>
 
-        </div>
+        </motion.div>
       </section>
 
       {/* 13. FOOTER SECTION */}
@@ -1334,8 +1507,6 @@ const LandingPage = () => {
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
             <span>© {new Date().getFullYear()} NEXTSTEP Academy. All rights reserved.</span>
             <div className="flex gap-4">
-              <a href={getAdminUrl()} className="hover:text-amber-400 transition-colors font-bold">Admin Dashboard Panel</a>
-              <span className="text-slate-800">|</span>
               <span className="font-bold text-amber-500">One Step Always Forward</span>
             </div>
           </div>
@@ -1421,6 +1592,45 @@ const LandingPage = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Course Teachers */}
+                {(() => {
+                  const courseTeachers = teachers.filter(t =>
+                    Array.isArray(t.teachingCourseIds) && t.teachingCourseIds.includes(selectedCourse.id)
+                  );
+                  if (courseTeachers.length === 0) return null;
+                  return (
+                    <div className="space-y-3">
+                      <h4 className="font-extrabold text-xs uppercase tracking-widest text-slate-400">Your Instructor{courseTeachers.length > 1 ? 's' : ''}</h4>
+                      <div className="space-y-3">
+                        {courseTeachers.map((teacher) => (
+                          <div key={teacher.id} className="flex items-start gap-4 bg-gradient-to-br from-[#0B2C5F]/5 to-slate-50 border border-[#0B2C5F]/10 rounded-2xl p-4">
+                            {/* Avatar */}
+                            <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-[#0B2C5F]/15 shrink-0 bg-slate-100 shadow-sm">
+                              {teacher.imageUrl ? (
+                                <img src={teacher.imageUrl} alt={teacher.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-[#0B2C5F]/10">
+                                  <Users size={24} className="text-[#0B2C5F]" />
+                                </div>
+                              )}
+                            </div>
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <h5 className="font-black text-slate-800 text-sm leading-tight">{teacher.name}</h5>
+                              <span className="text-[11px] font-bold text-amber-600 block mt-0.5">{teacher.qualification}</span>
+                              {teacher.description && (
+                                <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-1.5 line-clamp-3">
+                                  {teacher.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
               </div>
 
@@ -1520,6 +1730,118 @@ const LandingPage = () => {
                 </button>
               </div>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 16. REVIEW SUBMISSION MODAL */}
+      <AnimatePresence>
+        {isReviewModalOpen && (
+          <div className="fixed inset-0 bg-slate-950/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+            {/* Backdrop click exits */}
+            <div className="absolute inset-0 cursor-pointer" onClick={() => setIsReviewModalOpen(false)} />
+
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl p-6 relative z-10 flex flex-col max-h-[90vh]"
+            >
+              <div className="flex justify-between items-center pb-4 border-b border-slate-100 shrink-0">
+                <h3 className="text-xl font-black text-[#0B2C5F] font-['Outfit']">Share Your Experience</h3>
+                <button 
+                  onClick={() => setIsReviewModalOpen(false)} 
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {reviewSubmitted ? (
+                <div className="flex-1 py-12 flex flex-col items-center justify-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-500 shadow-md">
+                    <Check size={36} strokeWidth={3} className="animate-bounce" />
+                  </div>
+                  <h4 className="text-lg font-bold text-slate-800">Review Submitted!</h4>
+                  <p className="text-xs text-slate-500 font-semibold text-center max-w-xs">
+                    Thank you! Your feedback has been sent to the administrator for review and approval.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleReviewSubmit} className="space-y-5 overflow-y-auto py-4 flex-1 custom-scrollbar">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 pl-1">Your Name *</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={reviewForm.author}
+                      onChange={(e) => setReviewForm({ ...reviewForm, author: e.target.value })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-brand-blue text-sm font-semibold"
+                      placeholder="e.g. Rahul Sharma"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 pl-1">Course / Batch Name *</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={reviewForm.course}
+                      onChange={(e) => setReviewForm({ ...reviewForm, course: e.target.value })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-brand-blue text-sm font-semibold"
+                      placeholder="e.g. Operating System Batch"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 pl-1">Rating *</label>
+                    <div className="flex items-center gap-1.5 pl-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                          className="text-amber-400 hover:scale-110 transition-transform"
+                        >
+                          <Star 
+                            size={28} 
+                            fill={star <= reviewForm.rating ? "#f59e0b" : "transparent"} 
+                            className={star <= reviewForm.rating ? "text-amber-500" : "text-slate-300"} 
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 pl-1">Your Review *</label>
+                    <textarea 
+                      rows="4" 
+                      required
+                      value={reviewForm.review}
+                      onChange={(e) => setReviewForm({ ...reviewForm, review: e.target.value })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-brand-blue text-sm font-medium resize-none"
+                      placeholder="Write your genuine feedback here..."
+                    ></textarea>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={submittingReview}
+                    className="w-full py-3 bg-[#0B2C5F] text-white hover:bg-slate-900 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-brand-blue/15 flex items-center justify-center gap-2"
+                  >
+                    {submittingReview ? (
+                      <>
+                        <Loader2 className="animate-spin" size={14} />
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <span>Submit Review</span>
+                    )}
+                  </button>
+                </form>
+              )}
             </motion.div>
           </div>
         )}

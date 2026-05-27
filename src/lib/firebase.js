@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInAnonymously } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -26,14 +26,55 @@ const app = initializeApp(firebaseConfig);
 // Initialize Services
 export const auth = getAuth(app);
 
+let authInitialized = false;
+let authInitResolve = null;
+const authInitPromise = new Promise((resolve) => {
+  authInitResolve = resolve;
+});
+
+// Set up a one-time listener to resolve the initialization promise
+const unsubscribeInit = onAuthStateChanged(auth, (user) => {
+  authInitialized = true;
+  if (authInitResolve) {
+    authInitResolve(user);
+  }
+  unsubscribeInit();
+});
+
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export const db = getFirestore(app);
 
-/** If no Firebase user yet, sign in anonymously (e.g. legacy flows). When an admin is signed in with Google, that user is returned instead. Firestore rules must allow that admin (or anonymous) to read/write as needed. */
+/** If no Firebase user yet, sign in anonymously (e.g. legacy flows) but only for client/landing page flows. When an admin is signed in with Google, that user is returned instead. */
 export async function ensureFirebaseClientAuth() {
-  if (auth.currentUser) return auth.currentUser;
+  // 1. Wait for Firebase to restore session from storage (if any)
+  if (!authInitialized) {
+    await authInitPromise;
+  }
+
+  // 2. If already logged in (Google admin or previous anonymous session), return it
+  if (auth.currentUser) {
+    return auth.currentUser;
+  }
+
+  // 3. Detect if we are currently in Admin Panel mode
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const isAdmin = searchParams && (searchParams.get('admin') === 'true' || 
+    (searchParams.get('admin') !== 'false' && (
+      hostname.startsWith('admin.') || 
+      hostname.includes('admin-panel') || 
+      hostname.includes('adminpannel') ||
+      hostname.includes('admin.')
+    )));
+
+  if (isAdmin) {
+    // Never sign in anonymously in admin panel mode
+    return null;
+  }
+
+  // 4. Client landing page: authenticate anonymously to read/write reviews
   const cred = await signInAnonymously(auth);
   return cred.user;
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
@@ -16,25 +16,58 @@ import {
   ChevronLeft,
   ChevronRight,
   UserPlus,
-  User
+  User,
+  MessageSquare,
+  ClipboardList
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { admissionService } from '../services/admissionService';
+import { reviewService } from '../services/reviewService';
 
 const cn = (...inputs) => twMerge(clsx(inputs));
 
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
   const navigate = useNavigate();
+  const [pendingAdmissions, setPendingAdmissions] = useState(0);
+  const [pendingReviews, setPendingReviews] = useState(0);
+
+  useEffect(() => {
+    // 1. Subscribe to real-time admissions count
+    const unsubscribeAdmissions = admissionService.subscribeAdmissionRequests(
+      (data) => {
+        const count = data.filter(req => (req.status || 'pending') === 'pending').length;
+        setPendingAdmissions(count);
+      },
+      (err) => console.error("Sidebar admissions subscribe error:", err)
+    );
+
+    // 2. Subscribe to real-time reviews count
+    const unsubscribeReviews = reviewService.subscribeAllReviews(
+      (data) => {
+        const count = data.filter(rev => (rev.status || 'pending') === 'pending').length;
+        setPendingReviews(count);
+      },
+      (err) => console.error("Sidebar reviews subscribe error:", err)
+    );
+
+    return () => {
+      if (unsubscribeAdmissions) unsubscribeAdmissions();
+      if (unsubscribeReviews) unsubscribeReviews();
+    };
+  }, []);
 
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { name: 'Students', icon: Users, path: '/students' },
     { name: 'App Registrations', icon: UserPlus, path: '/app-registrations' },
+    { name: 'Admissions', icon: ClipboardList, path: '/admissions', badge: pendingAdmissions },
     { name: 'Courses', icon: BookOpen, path: '/courses' },
     { name: 'Teachers', icon: User, path: '/teachers' },
     { name: 'Lectures', icon: Video, path: '/lectures' },
     { name: 'Notes', icon: FileText, path: '/notes' },
     { name: 'Projects', icon: Briefcase, path: '/projects' },
+    { name: 'Reviews', icon: MessageSquare, path: '/reviews', badge: pendingReviews },
     { name: 'Notifications', icon: Bell, path: '/notifications' },
     { name: 'Legal & Play Store', icon: Scale, path: '/legal-docs' },
     { name: 'Settings', icon: Settings, path: '/settings' },
@@ -81,14 +114,30 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             key={item.path}
             to={item.path}
             className={({ isActive }) => cn(
-              "flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group",
+              "flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-200 group relative",
               isActive 
                 ? "bg-brand-gold text-brand-blue font-semibold shadow-lg" 
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             )}
           >
-            <item.icon className="w-5 h-5 min-w-[20px]" />
-            {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
+            <div className="relative flex items-center justify-center shrink-0">
+              <item.icon className="w-5 h-5 min-w-[20px]" />
+              {isCollapsed && item.badge > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border border-brand-blue leading-none">
+                  {item.badge}
+                </span>
+              )}
+            </div>
+            {!isCollapsed && (
+              <span className="whitespace-nowrap flex-1 flex items-center justify-between min-w-0">
+                <span className="truncate">{item.name}</span>
+                {item.badge > 0 && (
+                  <span className="ml-2 px-2 py-0.5 text-[9px] font-black bg-rose-500 text-white rounded-full leading-none shrink-0 shadow-sm animate-pulse">
+                    {item.badge}
+                  </span>
+                )}
+              </span>
+            )}
             
             {/* Tooltip for collapsed state */}
             {isCollapsed && (

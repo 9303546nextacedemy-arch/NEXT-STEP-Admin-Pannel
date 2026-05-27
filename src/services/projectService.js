@@ -7,7 +7,8 @@ import {
   doc, 
   serverTimestamp,
   query,
-  orderBy 
+  orderBy,
+  onSnapshot
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
@@ -21,6 +22,18 @@ export const projectService = {
       id: doc.id,
       ...doc.data()
     }));
+  },
+
+  // Subscribe to all projects in real-time
+  subscribeAllProjects: (onUpdate, onError) => {
+    const q = query(collection(db, COLLECTION_NAME), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (querySnapshot) => {
+      const projects = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      onUpdate(projects);
+    }, onError);
   },
 
   addProject: async (projectData) => {
