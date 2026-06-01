@@ -53,15 +53,7 @@ const Notifications = () => {
     }
   };
 
-  const resolveDeepLink = () => {
-    if (deepLinkMode === 'custom') {
-      const c = deepLinkCustom.trim();
-      if (!c) return '/notifications';
-      return c.startsWith('/') ? c : `/${c}`;
-    }
-    const map = { notifications: '/notifications', home: '/home', courses: '/courses' };
-    return map[deepLinkMode] || '/notifications';
-  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -78,14 +70,13 @@ const Notifications = () => {
         type: notificationType,
         targetType: targetGroup,
         targetCourseIds: targetGroup === 'courses' ? selectedCourseIds : [],
-        meta: { deepLink: resolveDeepLink() },
+        meta: {},
       });
       alert('Notification sent successfully!');
       setTitle('');
       setMessage('');
       setSelectedCourseIds([]);
-      setDeepLinkMode('notifications');
-      setDeepLinkCustom('');
+      setSelectedCourseIds([]);
       loadHistory();
     } catch (error) {
       console.error(error);
@@ -177,42 +168,6 @@ const Notifications = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Open in app when student taps notification</label>
-              <p className="text-xs text-gray-500 mb-3">Uses the same routes as the student app hash (e.g. <code className="bg-gray-100 px-1 rounded">/notifications</code>).</p>
-              <div className="flex flex-wrap gap-3 mb-3">
-                {[
-                  { id: 'notifications', label: 'Alerts' },
-                  { id: 'home', label: 'Home' },
-                  { id: 'courses', label: 'Courses' },
-                  { id: 'custom', label: 'Custom path' },
-                ].map((opt) => (
-                  <label
-                    key={opt.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm ${
-                      deepLinkMode === opt.id ? 'border-brand-blue bg-brand-blue/5' : 'border-gray-200'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="deepLink"
-                      checked={deepLinkMode === opt.id}
-                      onChange={() => setDeepLinkMode(opt.id)}
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-              {deepLinkMode === 'custom' ? (
-                <input
-                  type="text"
-                  value={deepLinkCustom}
-                  onChange={(e) => setDeepLinkCustom(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-brand-blue"
-                  placeholder="/notifications or /home"
-                />
-              ) : null}
-            </div>
 
             {/* Notification Type */}
             <div>
