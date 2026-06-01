@@ -1,8 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Radio, Calendar, ExternalLink, Edit2, Trash2, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus, Radio, Calendar, ExternalLink, Edit2, Trash2, Loader2, Video, Play, Users, Wifi, WifiOff, MonitorPlay } from 'lucide-react';
+
+// Check if running inside Electron .exe
+const IS_ELECTRON = typeof window !== 'undefined' && window.electronAPI?.isElectron === true;
 import { liveClassService } from '../services/liveClassService';
 import { courseService } from '../services/courseService';
 import { chapterService } from '../services/chapterService';
+import { adminSettingsService } from '../services/adminSettingsService';
+import { db } from '../lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { normalizeSubjects } from '../utils/courseSubjects';
 import {
   FILTER_ALL,
@@ -36,6 +42,21 @@ const LiveClasses = () => {
   const [newSubjectTitle, setNewSubjectTitle] = useState('');
   const [addingSubject, setAddingSubject] = useState(false);
   
+  // Live Config & Control Room States
+  const [jitsiSettings, setJitsiSettings] = useState({ domain: 'meet.jit.si', appId: '', secret: '' });
+  const [activeControlClass, setActiveControlClass] = useState(null);
+  const [attendees, setAttendees] = useState([]);
+  const [youtubeCreating, setYoutubeCreating] = useState(false);
+
+  // FFmpeg Streaming States (Electron only)
+  const [ffmpegStatus, setFfmpegStatus] = useState('idle'); // idle | starting | streaming | stopping | error
+  const [ffmpegLog, setFfmpegLog] = useState([]);
+  const [streamQuality, setStreamQuality] = useState('720p');
+  const [audioDevices, setAudioDevices] = useState([]);
+  const [selectedAudio, setSelectedAudio] = useState('');
+  const [showFfmpegLog, setShowFfmpegLog] = useState(false);
+  const logRef = useRef(null);
+
   const [formData, setFormData] = useState({
     title: '',
     courseId: '',
@@ -44,7 +65,9 @@ const LiveClasses = () => {
     chapterId: '',
     chapterTitle: '',
     dateTime: '',
-    link: ''
+    link: '',
+    meetingType: 'jitsi', // 'jitsi' or 'manual'
+    jitsiRoomName: ''
   });
 
   useEffect(() => {
@@ -88,12 +111,14 @@ const LiveClasses = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [coursesData, classesData] = await Promise.all([
+      const [coursesData, classesData, jitsiData] = await Promise.all([
         courseService.getAllCourses(),
-        liveClassService.getLiveClassesByCourse(selectedCourseId)
+        liveClassService.getLiveClassesByCourse(selectedCourseId),
+        adminSettingsService.getJitsiSettings()
       ]);
       setCourses(coursesData);
       setClasses(classesData);
+      setJitsiSettings(jitsiData);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -130,14 +155,29 @@ const LiveClasses = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      if (editingId) {
-        await liveClassService.updateLiveClass(editingId, formData);
+      const dataToSave = { ...formData };
+      if (dataToSave.meetingType === 'jitsi') {
+        if (!dataToSave.jitsiRoomName) {
+          dataToSave.jitsiRoomName = 'NextStep_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now().toString(36);
+        }
+        dataToSave.link = `https://meet.jit.si/${dataToSave.jitsiRoomName}`;
+        if (!editingId) {
+          dataToSave.status = 'SCHEDULED';
+        }
       } else {
-        await liveClassService.addLiveClass(formData);
+        dataToSave.jitsiRoomName = '';
+        if (!editingId) {
+          dataToSave.status = 'SCHEDULED';
+        }
+      }
+      if (editingId) {
+        await liveClassService.updateLiveClass(editingId, dataToSave);
+      } else {
+        await liveClassService.addLiveClass(dataToSave);
       }
       setIsModalOpen(false);
       setEditingId(null);
-      setFormData({ title: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', dateTime: '', link: '' });
+      setFormData({ title: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', dateTime: '', link: '', meetingType: 'jitsi', jitsiRoomName: '' });
       setNewChapterTitle('');
       setAddingChapter(false);
       setNewSubjectTitle('');
@@ -252,6 +292,191 @@ const LiveClasses = () => {
     [classes, filterSubjectId, filterChapterId]
   );
 
+  const handleCloseControlRoom = () => {
+    setActiveControlClass(null);
+  };
+
+
+  useEffect(() => {
+    if (!activeControlClass) {
+      setAttendees([]);
+      return;
+    }
+    
+    const q = query(
+      collection(db, 'live_attendance'),
+      where('classId', '==', activeControlClass.id)
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      }));
+      setAttendees(records.sort((a, b) => {
+        const ta = a.joinedAt?.toMillis ? a.joinedAt.toMillis() : 0;
+        const tb = b.joinedAt?.toMillis ? b.joinedAt.toMillis() : 0;
+        return tb - ta;
+      }));
+    }, (error) => {
+      console.error("Error listening to attendance:", error);
+    });
+    
+    return () => unsubscribe();
+  }, [activeControlClass]);
+
+  // Internal helper to create YouTube broadcast and update state
+  const createYoutubeBroadcastForClass = async (classId) => {
+    setYoutubeCreating(true);
+    try {
+      const response = await fetch("https://asia-south1-next-step-academy-5b9ab.cloudfunctions.net/createLiveBroadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId })
+      });
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error || 'Failed');
+
+      setActiveControlClass(prev => prev ? {
+        ...prev,
+        status: 'LIVE',
+        youtubeVideoId: data.youtubeVideoId,
+        youtubeRtmpUrl: data.youtubeRtmpUrl,
+        youtubeStreamKey: data.youtubeStreamKey
+      } : null);
+
+      setClasses(prev => prev.map(c => c.id === classId ? {
+        ...c, status: 'LIVE', youtubeVideoId: data.youtubeVideoId
+      } : c));
+
+      // Auto-copy stream key to clipboard so admin can Ctrl+V in Jitsi
+      try {
+        await navigator.clipboard.writeText(data.youtubeStreamKey);
+      } catch (e) { /* clipboard not available */ }
+
+      return data.youtubeStreamKey;
+    } finally {
+      setYoutubeCreating(false);
+    }
+  };
+
+  // ONE-CLICK launch: opens Jitsi + creates YouTube broadcast automatically
+  const handleLaunchClass = async (cls) => {
+    const room = cls.jitsiRoomName || `NextStepClass_${cls.id}`;
+    const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true`;
+
+    // 1. Open Jitsi immediately
+    window.open(jitsiUrl, '_blank');
+
+    // 2. Open control room (set with current class data, YouTube data comes async)
+    setActiveControlClass(cls);
+
+    // 3. Auto-create YouTube broadcast in background (non-blocking)
+    try {
+      const streamKey = await createYoutubeBroadcastForClass(cls.id);
+      // Stream key is now in clipboard — show notification in control room UI
+      // (state update already happened inside createYoutubeBroadcastForClass)
+    } catch (err) {
+      console.error('Auto YouTube broadcast failed:', err.message);
+      // Don't block the user — they can retry with the manual button
+    }
+  };
+
+  // ── FFmpeg Streaming Handlers (Electron only) ──────────────────
+  const handleStartFFmpegStream = async () => {
+    if (!IS_ELECTRON || !activeControlClass?.youtubeStreamKey) return;
+    setFfmpegStatus('starting');
+    setFfmpegLog([]);
+
+    // Listen for status updates
+    const unsubStatus = window.electronAPI.onStreamStatus((data) => {
+      setFfmpegStatus(data.status);
+    });
+    const unsubLog = window.electronAPI.onStreamLog((line) => {
+      setFfmpegLog(prev => {
+        const updated = [...prev, line].slice(-100); // Keep last 100 lines
+        setTimeout(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, 10);
+        return updated;
+      });
+    });
+
+    const result = await window.electronAPI.startStream(
+      activeControlClass.youtubeStreamKey,
+      streamQuality,
+      selectedAudio || undefined
+    );
+
+    if (!result.success) {
+      setFfmpegStatus('error');
+      setFfmpegLog(prev => [...prev, `ERROR: ${result.error}`]);
+      unsubStatus?.();
+      unsubLog?.();
+    }
+  };
+
+  const handleStopFFmpegStream = async () => {
+    if (!IS_ELECTRON) return;
+    setFfmpegStatus('stopping');
+    await window.electronAPI.stopStream();
+    setFfmpegStatus('idle');
+  };
+
+  // Load audio devices when control room opens (Electron only)
+  useEffect(() => {
+    if (!IS_ELECTRON || !activeControlClass) return;
+    window.electronAPI.listAudioDevices().then(devices => {
+      setAudioDevices(devices);
+      if (devices.length > 0 && !selectedAudio) setSelectedAudio(devices[0]);
+    }).catch(() => {});
+
+    // Restore stream status
+    window.electronAPI.getStreamStatus().then(({ status }) => setFfmpegStatus(status));
+  }, [activeControlClass]);
+
+  // Manual retry button (fallback if auto-creation failed)
+  const handleStartYoutubeBroadcast = async () => {
+    if (!activeControlClass) return;
+    try {
+      await createYoutubeBroadcastForClass(activeControlClass.id);
+    } catch (error) {
+      alert("Failed to create YouTube broadcast: " + error.message);
+    }
+  };
+
+  const handleEndClass = async () => {
+    if (!activeControlClass) return;
+    if (!window.confirm("Class end karna chahte hain?\n\nYe hoga:\n✓ Sabhi students automatically disconnect ho jaayenge\n✓ YouTube live stream band ho jaayegi\n✓ Recording save ho jaayegi")) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch("https://asia-south1-next-step-academy-5b9ab.cloudfunctions.net/endLiveBroadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId: activeControlClass.id })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to finalize broadcast');
+      }
+
+      handleCloseControlRoom();
+      fetchClasses();
+      // Prompt admin to also close Jitsi tab and end meeting for remaining participants
+      setTimeout(() => {
+        alert('Class end ho gayi! ✅\n\nAbhi Jitsi tab mein jao → "End meeting for all" click karo — taaki jo bhi Jitsi mein hain unhe bhi remove kar sake.\n\n(Students ko app mein "Class Khatam Ho Gayi" screen automatically dikhegi.)');
+      }, 300);
+    } catch (error) {
+      alert("Class end karne mein problem: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showToast = (text, type = 'success') => {
+    alert(text);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -262,7 +487,7 @@ const LiveClasses = () => {
         <button 
           onClick={() => {
             setEditingId(null);
-            setFormData({ title: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', dateTime: '', link: '' });
+            setFormData({ title: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', dateTime: '', link: '', meetingType: 'jitsi', jitsiRoomName: '' });
             setNewChapterTitle('');
             setAddingChapter(false);
             setNewSubjectTitle('');
@@ -352,9 +577,25 @@ const LiveClasses = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <a href={cls.link} target="_blank" rel="noreferrer" className="text-brand-blue hover:underline flex items-center gap-1 text-sm font-medium">
-                        Join Class <ExternalLink size={14} />
-                      </a>
+                      {cls.meetingType === 'jitsi' ? (
+                        cls.status === 'ENDED' ? (
+                          <span className="text-gray-400 text-xs font-bold uppercase bg-gray-100 px-2.5 py-1 rounded-full">Ended</span>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleLaunchClass(cls)}
+                              className="inline-flex items-center gap-1.5 bg-brand-blue text-white px-3.5 py-1.5 rounded-xl hover:bg-brand-blue/90 transition-all font-bold text-xs shadow-md shadow-brand-blue/10"
+                            >
+                              <Video size={14} />
+                              <span>Launch Class</span>
+                            </button>
+                          </div>
+                        )
+                      ) : (
+                        <a href={cls.link} target="_blank" rel="noreferrer" className="text-brand-blue hover:underline flex items-center gap-1 text-sm font-medium">
+                          Join Class <ExternalLink size={14} />
+                        </a>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button 
@@ -370,6 +611,8 @@ const LiveClasses = () => {
                             chapterTitle: cls.chapterTitle || '',
                             dateTime: formatForDatetimeLocal(cls.dateTime),
                             link: cls.link || '',
+                            meetingType: cls.meetingType || 'manual',
+                            jitsiRoomName: cls.jitsiRoomName || '',
                           });
                           setNewChapterTitle('');
                           setAddingChapter(false);
@@ -550,16 +793,33 @@ const LiveClasses = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meeting Link</label>
-                <input 
-                  type="text" 
-                  required
-                  value={formData.link}
-                  onChange={(e) => setFormData({...formData, link: e.target.value})}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue" 
-                  placeholder="Zoom, Google Meet, etc." 
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meeting Platform</label>
+                <select
+                  value={formData.meetingType}
+                  onChange={(e) => setFormData({...formData, meetingType: e.target.value})}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue bg-white"
+                >
+                  <option value="jitsi">Jitsi Classroom (Interactive + YouTube Broadcast)</option>
+                  <option value="manual">Manual Link (Zoom, Google Meet, YouTube Live)</option>
+                </select>
               </div>
+              {formData.meetingType === 'manual' ? (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meeting Link</label>
+                  <input 
+                    type="text" 
+                    required={formData.meetingType === 'manual'}
+                    value={formData.link}
+                    onChange={(e) => setFormData({...formData, link: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue" 
+                    placeholder="Zoom, Google Meet, etc." 
+                  />
+                </div>
+              ) : (
+                <div className="p-3.5 bg-blue-50 border border-blue-100 text-brand-blue rounded-xl text-xs font-semibold">
+                  Jitsi Room Name & Join URL will be automatically configured for students.
+                </div>
+              )}
               </div>
               <div className="shrink-0 border-t border-gray-100 p-4 flex gap-3 bg-white">
                 <button type="button" onClick={() => { setIsModalOpen(false); setEditingId(null); }} className="flex-1 py-3 text-gray-600 font-bold border border-gray-200 rounded-xl">Cancel</button>
@@ -572,6 +832,277 @@ const LiveClasses = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Class Control Room Panel (Monitoring Dashboard) */}
+      {activeControlClass && (
+        <div className="fixed inset-0 bg-gray-950 z-[150] flex flex-col overflow-hidden font-sans text-left">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900 shrink-0">
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-brand-blue/20 text-brand-blue">Control Room</span>
+              <h2 className="text-lg font-bold text-white mt-1 truncate">{activeControlClass.title}</h2>
+              <p className="text-xs text-gray-400">{activeControlClass.subjectTitle || 'No Subject'} • {activeControlClass.chapterTitle || 'No Chapter'}</p>
+            </div>
+            <div className="flex gap-3 shrink-0 ml-4">
+              {/* Open class in new tab — admin becomes moderator as first joiner */}
+              <button
+                onClick={() => {
+                  const room = activeControlClass.jitsiRoomName || `NextStepClass_${activeControlClass.id}`;
+                  const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true`;
+                  window.open(jitsiUrl, '_blank');
+                }}
+                className="flex items-center gap-2 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-brand-blue/20"
+              >
+                <Video size={16} />
+                <span>Join Class (New Tab)</span>
+              </button>
+              <button
+                onClick={() => handleCloseControlRoom()}
+                className="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition-colors"
+                title="Minimize"
+              >
+                <Plus className="rotate-45" size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          {activeControlClass.youtubeStreamKey ? (
+            <div className="px-6 py-3 bg-yellow-950/60 border-b border-yellow-700/40 text-yellow-200 text-xs flex items-start gap-2 shrink-0">
+              <span className="text-base shrink-0 mt-0.5">🎯</span>
+              <span>
+                <strong>Stream key clipboard mein copy ho gaya!</strong> — Jitsi tab mein jao →{' '}
+                <code className="bg-yellow-900/50 px-1.5 py-0.5 rounded font-mono">...</code> button dabao →{' '}
+                <strong>Start live stream</strong> click karo → text box mein <kbd className="bg-yellow-900/50 px-1 rounded">Ctrl+V</kbd> dabao → Start karo.
+              </span>
+            </div>
+          ) : youtubeCreating ? (
+            <div className="px-6 py-3 bg-orange-950/50 border-b border-orange-700/40 text-orange-200 text-xs flex items-center gap-2 shrink-0">
+              <span className="animate-spin text-base">⏳</span>
+              <span>YouTube broadcast create ho raha hai... thoda ruko</span>
+            </div>
+          ) : (
+            <div className="px-6 py-3 bg-blue-950/50 border-b border-blue-900/40 text-blue-300 text-xs flex items-center gap-2 shrink-0">
+              <span className="text-base">💡</span>
+              <span>Jitsi tab mein jao — aap moderator ke taur pe join ho. Students apne aap join ho jaenge.</span>
+            </div>
+          )}
+
+          {/* Dashboard Grid */}
+          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+
+            {/* Class Info Card */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+              <h4 className="font-bold text-sm text-gray-300 mb-3 flex items-center gap-2"><Play size={15} /> Class Info</h4>
+              <div className="space-y-2.5 text-xs">
+                <div>
+                  <p className="text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Room Name</p>
+                  <p className="text-gray-200 font-mono break-all">{activeControlClass.jitsiRoomName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Direct Link</p>
+                  <a
+                    href={`https://meet.jit.si/${activeControlClass.jitsiRoomName || ''}`}
+                    target="_blank" rel="noreferrer"
+                    className="text-brand-blue hover:underline break-all"
+                  >
+                    meet.jit.si/{activeControlClass.jitsiRoomName || '—'}
+                  </a>
+                </div>
+                <div>
+                  <p className="text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Scheduled</p>
+                  <p className="text-gray-200">{new Date(activeControlClass.dateTime).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Status</p>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    activeControlClass.status === 'LIVE' ? 'bg-emerald-500/20 text-emerald-400' :
+                    activeControlClass.status === 'ENDED' ? 'bg-gray-700 text-gray-400' :
+                    'bg-yellow-500/20 text-yellow-400'
+                  }`}>{activeControlClass.status || 'SCHEDULED'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* YouTube Stream Card */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+              <h4 className="font-bold text-sm text-gray-300 mb-3 flex items-center gap-2"><Radio size={15} /> YouTube Live Stream</h4>
+              {activeControlClass.youtubeVideoId ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping inline-block"></span>
+                    Broadcast Ready
+                  </div>
+
+                  {/* FFmpeg Streaming Panel (Electron .exe only) */}
+                  {IS_ELECTRON && activeControlClass.youtubeStreamKey && (
+                    <div className="p-3 bg-gray-950 border border-gray-700 rounded-xl space-y-2.5">
+                      <p className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5">
+                        <MonitorPlay size={12} /> Auto Screen Streaming (FFmpeg)
+                      </p>
+
+                      {/* Quality Selector */}
+                      <div className="flex gap-1.5">
+                        {['480p','720p','1080p'].map(q => (
+                          <button
+                            key={q}
+                            onClick={() => setStreamQuality(q)}
+                            className={`flex-1 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                              streamQuality === q
+                                ? 'bg-brand-blue border-brand-blue text-white'
+                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
+                            }`}
+                          >{q}</button>
+                        ))}
+                      </div>
+
+                      {/* Audio Device Selector */}
+                      {audioDevices.length > 0 && (
+                        <select
+                          value={selectedAudio}
+                          onChange={e => setSelectedAudio(e.target.value)}
+                          className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-[10px] rounded-lg px-2 py-1.5 outline-none"
+                        >
+                          {audioDevices.map(d => <option key={d} value={`audio=${d}`}>{d}</option>)}
+                        </select>
+                      )}
+
+                      {/* Start/Stop Button */}
+                      {ffmpegStatus === 'idle' || ffmpegStatus === 'error' ? (
+                        <button
+                          onClick={handleStartFFmpegStream}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <Wifi size={13} /> Screen Stream Shuru Karo (YouTube)
+                        </button>
+                      ) : ffmpegStatus === 'starting' ? (
+                        <div className="w-full py-2 bg-yellow-600/30 border border-yellow-600/40 text-yellow-300 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5">
+                          <Loader2 size={13} className="animate-spin" /> Stream shuru ho raha hai...
+                        </div>
+                      ) : ffmpegStatus === 'streaming' ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px]">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping inline-block"></span>
+                            LIVE — Screen YouTube par stream ho rahi hai!
+                          </div>
+                          <button
+                            onClick={handleStopFFmpegStream}
+                            className="w-full py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <WifiOff size={13} /> Stream Band Karo
+                          </button>
+                        </div>
+                      ) : ffmpegStatus === 'stopping' ? (
+                        <div className="w-full py-2 bg-gray-700 text-gray-300 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5">
+                          <Loader2 size={13} className="animate-spin" /> Band ho raha hai...
+                        </div>
+                      ) : null}
+
+                      {/* Log Toggle */}
+                      <button
+                        onClick={() => setShowFfmpegLog(p => !p)}
+                        className="text-[10px] text-gray-500 hover:text-gray-300 underline w-full text-left"
+                      >{showFfmpegLog ? 'Log chhupao' : 'FFmpeg log dekhein'}</button>
+                      {showFfmpegLog && (
+                        <div
+                          ref={logRef}
+                          className="h-24 overflow-y-auto bg-black rounded-lg p-2 font-mono text-[9px] text-green-400 space-y-0.5"
+                        >
+                          {ffmpegLog.length === 0
+                            ? <span className="text-gray-600">Log yahan dikhega...</span>
+                            : ffmpegLog.map((l, i) => <div key={i}>{l}</div>)
+                          }
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* For browser (non-Electron): show manual stream key */}
+                  {!IS_ELECTRON && activeControlClass.youtubeStreamKey && (
+                    <div className="p-3 bg-black/40 border border-yellow-500/30 rounded-xl">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[10px] text-yellow-400 uppercase font-bold">Stream Key — Jitsi mein paste karo</p>
+                        <button
+                          onClick={() => navigator.clipboard?.writeText(activeControlClass.youtubeStreamKey).then(() => alert('Copied!')).catch(() => {})}
+                          className="text-[10px] text-brand-blue font-bold hover:underline"
+                        >Copy</button>
+                      </div>
+                      <p className="text-xs font-mono text-yellow-200 break-all select-all leading-relaxed">{activeControlClass.youtubeStreamKey}</p>
+                    </div>
+                  )}
+
+                  <a
+                    href={`https://www.youtube.com/watch?v=${activeControlClass.youtubeVideoId}`}
+                    target="_blank" rel="noreferrer"
+                    className="flex items-center justify-center gap-2 bg-red-600/10 border border-red-600/30 text-red-400 py-2.5 rounded-xl text-sm font-semibold hover:bg-red-600/20 transition-all"
+                  >
+                    <ExternalLink size={16} /> YouTube par Live Dekhein
+                  </a>
+                  <p className="text-[10px] text-gray-500 text-center">Unlisted — sirf link se access hoga</p>
+                </div>
+              ) : youtubeCreating ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-yellow-400 text-xs font-semibold">
+                    <span className="animate-spin">⏳</span>
+                    YouTube broadcast create ho raha hai...
+                  </div>
+                  <p className="text-[10px] text-gray-500">Thoda ruko, automatically stream setup ho raha hai...</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-[11px] text-gray-400">Broadcast auto-create nahi ho saka. Retry karein:</p>
+                  <button
+                    onClick={handleStartYoutubeBroadcast}
+                    disabled={loading || youtubeCreating}
+                    className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Radio size={16} className="animate-pulse" />
+                    Retry YouTube Stream
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Attendees Card */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-bold text-sm text-gray-300 flex items-center gap-2"><Users size={15} /> Attendees</h4>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-blue/20 text-brand-blue">{attendees.length} joined</span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-1.5 max-h-48">
+                {attendees.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic text-center py-8">No students joined yet.<br/>They join after you start the class.</p>
+                ) : attendees.map((att, idx) => (
+                  <div key={idx} className="flex justify-between items-center bg-gray-800/60 p-2.5 rounded-xl">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate text-gray-200">{att.studentName || 'Student'}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{att.studentEmail || ''}</p>
+                    </div>
+                    <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded shrink-0">Joined</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="px-6 py-4 border-t border-gray-800 bg-gray-950 flex gap-3 shrink-0">
+            <button
+              onClick={() => handleCloseControlRoom()}
+              className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold rounded-xl text-sm"
+            >
+              Minimize
+            </button>
+            <button
+              onClick={handleEndClass}
+              disabled={loading}
+              className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm shadow-lg shadow-rose-600/20 disabled:opacity-50"
+            >
+              {loading ? 'Ending...' : 'End Class'}
+            </button>
           </div>
         </div>
       )}

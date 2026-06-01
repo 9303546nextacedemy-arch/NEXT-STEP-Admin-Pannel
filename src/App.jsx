@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './lib/firebase';
 import { isAllowedAdminEmail } from './config/adminAuth';
@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import Courses from './pages/Courses';
 import Lectures from './pages/Lectures';
+import LiveClasses from './pages/LiveClasses';
 import Notes from './pages/Notes';
 import Projects from './pages/Projects';
 import Reviews from './pages/Reviews';
@@ -122,8 +123,8 @@ function App() {
           <Route path="app-registrations" element={<AppRegistrations />} />
           <Route path="courses" element={<Courses />} />
           <Route path="lectures" element={<Lectures />} />
+          <Route path="live-classes" element={<LiveClasses />} />
           <Route path="notes" element={<Notes />} />
-          <Route path="live-classes" element={<Navigate to="/lectures" replace />} />
           <Route path="projects" element={<Projects />} />
           <Route path="reviews" element={<Reviews />} />
           <Route path="admissions" element={<Admissions />} />

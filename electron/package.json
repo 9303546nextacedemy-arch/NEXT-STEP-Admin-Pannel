@@ -1,0 +1,51 @@
+{
+  "name": "nextstep-admin-desktop",
+  "version": "1.0.0",
+  "description": "NEXTSTEP Academy Admin Panel - Desktop App",
+  "main": "electron/main.js",
+  "scripts": {
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5174 && electron .\"",
+    "electron:build": "npm run build && electron-builder build --win",
+    "electron:pack": "npm run build && electron-builder build --win --dir"
+  },
+  "build": {
+    "appId": "com.nextstep.academy.admin",
+    "productName": "NEXTSTEP Admin",
+    "copyright": "Copyright © 2024 NEXTSTEP Academy",
+    "directories": {
+      "output": "../dist-electron",
+      "app": ".."
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "public/logo.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "public/logo.ico",
+      "uninstallerIcon": "public/logo.ico",
+      "shortcutName": "NEXTSTEP Admin"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/ffmpeg-static/ffmpeg.exe",
+        "to": "ffmpeg.exe"
+      }
+    ]
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0"
+  }
+}

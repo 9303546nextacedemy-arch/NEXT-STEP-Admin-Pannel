@@ -1,0 +1,32 @@
+{
+  "appId": "com.nextstep.academy.admin",
+  "productName": "NEXTSTEP Admin",
+  "copyright": "Copyright © 2024 NEXTSTEP Academy",
+  "electronVersion": "30.5.1",
+  "directories": {
+    "output": "build-desktop"
+  },
+  "win": {
+    "target": [{ "target": "nsis", "arch": ["x64"] }]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "shortcutName": "NEXTSTEP Admin",
+    "createDesktopShortcut": true
+  },
+  "files": [
+    "dist/**/*",
+    "electron/main.cjs",
+    "electron/preload.cjs",
+    "node_modules/**/*",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "electron/node_modules/ffmpeg-static/ffmpeg.exe",
+      "to": "ffmpeg.exe"
+    }
+  ],
+  "asar": true
+}

@@ -1,7 +1,10 @@
 {
   "name": "nextstep-academy-admin-pannel",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "NEXTSTEP Academy Admin Panel",
+  "author": "NEXTSTEP Academy",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -11,7 +11,13 @@ export const isSubdomainAdmin = () => {
     return searchParams.get('admin') === 'true';
   }
   
+  // 1.5. If running inside Electron desktop app, ALWAYS show Admin Panel
+  if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.isElectron) {
+    return true;
+  }
+  
   // 2. Subdomain check: if it starts with 'admin.' or contains admin patterns
+
   if (
     hostname.startsWith('admin.') || 
     hostname.includes('admin-panel') || 

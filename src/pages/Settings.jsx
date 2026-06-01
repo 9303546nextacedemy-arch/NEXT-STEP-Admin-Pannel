@@ -14,6 +14,10 @@ const Settings = () => {
   const [newEmail, setNewEmail] = useState('');
   const [appSettings, setAppSettings] = useState({ maintenanceMode: false, demoMode: true });
 
+  // Live Config States
+  const [jitsiSettings, setJitsiSettings] = useState({ domain: 'meet.jit.si', appId: '', secret: '' });
+  const [youtubeSettings, setYoutubeSettings] = useState({ clientId: '', clientSecret: '', gmail: '', refreshToken: '' });
+
   const currentUser = auth.currentUser;
 
   useEffect(() => {
@@ -25,8 +29,12 @@ const Settings = () => {
     try {
       const emails = await adminSettingsService.getAuthorizedEmails();
       const settings = await adminSettingsService.getAppSettings();
+      const jitsi = await adminSettingsService.getJitsiSettings();
+      const yt = await adminSettingsService.getYoutubeSettings();
       setAuthorizedEmails(emails);
       setAppSettings(settings);
+      setJitsiSettings(jitsi);
+      setYoutubeSettings(yt);
     } catch (error) {
       console.error("Error fetching settings:", error);
     } finally {
@@ -37,6 +45,64 @@ const Settings = () => {
   const showToast = (text, type = 'success') => {
     setMessage({ text, type });
     setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+  };
+
+  const handleSaveJitsi = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await adminSettingsService.updateJitsiSettings(jitsiSettings);
+      showToast('Jitsi settings saved successfully');
+    } catch (error) {
+      showToast('Failed to save Jitsi: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveYoutubeCredentials = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await adminSettingsService.updateYoutubeSettings(youtubeSettings);
+      showToast('YouTube credentials saved');
+    } catch (error) {
+      showToast('Failed to save credentials: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnectYoutube = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("https://asia-south1-next-step-academy-5b9ab.cloudfunctions.net/youtubeAuthUrl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.open(data.url, '_blank', 'width=600,height=600');
+        showToast('OAuth flow started. Connect your account in the popup.');
+        
+        // Listen for Firestore updates to know when connection finishes
+        const checkInterval = setInterval(async () => {
+          const yt = await adminSettingsService.getYoutubeSettings();
+          if (yt.refreshToken) {
+            setYoutubeSettings(yt);
+            showToast('YouTube channel successfully connected!');
+            clearInterval(checkInterval);
+          }
+        }, 3000);
+        setTimeout(() => clearInterval(checkInterval), 60000);
+      } else {
+        showToast('Failed to get authorization URL: ' + (data.error || 'Unknown error'), 'error');
+      }
+    } catch (error) {
+      showToast('Failed to connect YouTube: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddEmail = async (e) => {
@@ -98,6 +164,7 @@ const Settings = () => {
   const tabs = [
     { id: 'profile', name: 'Profile Info', icon: User },
     { id: 'access', name: 'Admin Access', icon: ShieldCheck },
+    { id: 'liveConfig', name: 'Live & Jitsi Settings', icon: Settings2 },
   ];
 
   return (
@@ -245,6 +312,146 @@ const Settings = () => {
                       <div className="p-8 text-center text-gray-400 italic text-sm">No additional admins added.</div>
                     )}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Live & Jitsi Configuration Section */}
+          {activeTab === 'liveConfig' && (
+            <div className="space-y-6">
+              {/* Jitsi Meet Settings */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-premium overflow-hidden">
+                <div className="p-6 border-b border-gray-50">
+                  <h2 className="text-xl font-bold text-gray-900">Jitsi Meet Server Settings</h2>
+                  <p className="text-sm text-gray-500">Configure your Jitsi video server details. Defaults to free public instance.</p>
+                </div>
+                <form onSubmit={handleSaveJitsi} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Jitsi Domain</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={jitsiSettings.domain}
+                      onChange={(e) => setJitsiSettings({...jitsiSettings, domain: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue" 
+                      placeholder="meet.jit.si or your-jitsi-subdomain.com"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">App ID (JWT Iss)</label>
+                      <input 
+                        type="text" 
+                        value={jitsiSettings.appId || ''}
+                        onChange={(e) => setJitsiSettings({...jitsiSettings, appId: e.target.value})}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue" 
+                        placeholder="my-jitsi-app"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">App Secret (JWT Secret)</label>
+                      <input 
+                        type="password" 
+                        value={jitsiSettings.secret || ''}
+                        onChange={(e) => setJitsiSettings({...jitsiSettings, secret: e.target.value})}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue" 
+                        placeholder="••••••••••••••••••••"
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-2">
+                    <button 
+                      type="submit" 
+                      disabled={loading}
+                      className="px-6 py-2.5 bg-brand-blue text-white font-bold rounded-xl hover:bg-brand-blue/90 disabled:opacity-50"
+                    >
+                      Save Jitsi Settings
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* YouTube Credentials Settings */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-premium overflow-hidden">
+                <div className="p-6 border-b border-gray-50">
+                  <h2 className="text-xl font-bold text-gray-900">YouTube API Credentials</h2>
+                  <p className="text-sm text-gray-500">Add credentials from Google Cloud Console to enable YouTube Live Streaming.</p>
+                </div>
+                <form onSubmit={handleSaveYoutubeCredentials} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Client ID</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={youtubeSettings.clientId || ''}
+                      onChange={(e) => setYoutubeSettings({...youtubeSettings, clientId: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue text-sm" 
+                      placeholder="Google OAuth Client ID"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Client Secret</label>
+                    <input 
+                      type="password" 
+                      required
+                      value={youtubeSettings.clientSecret || ''}
+                      onChange={(e) => setYoutubeSettings({...youtubeSettings, clientSecret: e.target.value})}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue text-sm" 
+                      placeholder="Google OAuth Client Secret"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Gmail for Streaming</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={youtubeSettings.gmail || ''}
+                        onChange={(e) => setYoutubeSettings({...youtubeSettings, gmail: e.target.value})}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue" 
+                        placeholder="97487787lecnextstepyt@gmail.com"
+                      />
+                    </div>
+                    <div className="pt-6">
+                      <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full px-6 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        Save Credentials
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              {/* YouTube Integration Connection Card */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-premium p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-lg">YouTube Live Broadcaster Connection</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">Connect your YouTube Channel to auto-stream and auto-record classrooms.</p>
+                  
+                  {youtubeSettings.refreshToken ? (
+                    <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-xs font-bold">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                      <span>Connected: {youtubeSettings.gmail || 'Channel'}</span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 bg-amber-50 text-amber-700 border border-amber-100 rounded-full text-xs font-bold">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      <span>Not Authorized Yet</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <button
+                    onClick={handleConnectYoutube}
+                    disabled={loading || !youtubeSettings.clientId || !youtubeSettings.clientSecret}
+                    className="w-full md:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:shadow-none"
+                  >
+                    {youtubeSettings.refreshToken ? 'Reconnect Channel' : 'Connect Channel'}
+                  </button>
                 </div>
               </div>
             </div>
