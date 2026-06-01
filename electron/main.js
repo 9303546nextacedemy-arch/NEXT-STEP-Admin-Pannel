@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const os = require('os');
@@ -113,6 +113,11 @@ function buildFFmpegArgs(streamKey, quality, audioDevice) {
 
 // ── IPC Handlers ────────────────────────────────────────────────
 
+ipcMain.handle('app:open-external', async (event, url) => {
+  await shell.openExternal(url);
+  return true;
+});
+
 // Check if FFmpeg is available
 ipcMain.handle('ffmpeg:check', async () => {
   const ffmpegPath = getFFmpegPath();
@@ -149,7 +154,10 @@ ipcMain.handle('ffmpeg:start', async (event, { streamKey, quality, audioDevice }
   }
 
   const ffmpegPath = getFFmpegPath();
-  const audio = audioDevice || 'audio=Microphone Array (Realtek High Definition Audio)';
+  let audio = audioDevice || 'audio=Microphone Array (Realtek High Definition Audio)';
+  if (!audio.startsWith('audio=')) {
+    audio = `audio=${audio}`;
+  }
   const args = buildFFmpegArgs(streamKey, quality || '720p', audio);
 
   return new Promise((resolve) => {

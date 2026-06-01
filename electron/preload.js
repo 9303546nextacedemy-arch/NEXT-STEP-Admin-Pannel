@@ -35,4 +35,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Check if running inside Electron
   isElectron: true,
+
+  // Open URL in system default browser
+  openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
 });

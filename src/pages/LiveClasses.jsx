@@ -43,7 +43,7 @@ const LiveClasses = () => {
   const [addingSubject, setAddingSubject] = useState(false);
   
   // Live Config & Control Room States
-  const [jitsiSettings, setJitsiSettings] = useState({ domain: 'meet.ffmuc.net', appId: '', secret: '' });
+  const [jitsiSettings, setJitsiSettings] = useState({ domain: 'meet.jit.si', appId: '', secret: '' });
   const [activeControlClass, setActiveControlClass] = useState(null);
   const [attendees, setAttendees] = useState([]);
   const [youtubeCreating, setYoutubeCreating] = useState(false);
@@ -160,7 +160,7 @@ const LiveClasses = () => {
         if (!dataToSave.jitsiRoomName) {
           dataToSave.jitsiRoomName = 'NextStep_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now().toString(36);
         }
-        dataToSave.link = `https://meet.ffmuc.net/${dataToSave.jitsiRoomName}`;
+        dataToSave.link = `https://meet.jit.si/${dataToSave.jitsiRoomName}`;
         if (!editingId) {
           dataToSave.status = 'SCHEDULED';
         }
@@ -363,10 +363,14 @@ const LiveClasses = () => {
   // ONE-CLICK launch: opens Jitsi + creates YouTube broadcast automatically
   const handleLaunchClass = async (cls) => {
     const room = cls.jitsiRoomName || `NextStepClass_${cls.id}`;
-    const jitsiUrl = `https://meet.ffmuc.net/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true`;
+    const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true`;
 
-    // 1. Open Jitsi immediately
-    window.open(jitsiUrl, '_blank');
+    // 1. Open Jitsi immediately in default system browser to allow Google Login
+    if (IS_ELECTRON && window.electronAPI?.openExternal) {
+      window.electronAPI.openExternal(jitsiUrl);
+    } else {
+      window.open(jitsiUrl, '_blank');
+    }
 
     // 2. Open control room (set with current class data, YouTube data comes async)
     setActiveControlClass(cls);
@@ -851,8 +855,12 @@ const LiveClasses = () => {
               <button
                 onClick={() => {
                   const room = activeControlClass.jitsiRoomName || `NextStepClass_${activeControlClass.id}`;
-                  const jitsiUrl = `https://meet.ffmuc.net/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true`;
-                  window.open(jitsiUrl, '_blank');
+                  const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true`;
+                  if (IS_ELECTRON && window.electronAPI?.openExternal) {
+                    window.electronAPI.openExternal(jitsiUrl);
+                  } else {
+                    window.open(jitsiUrl, '_blank');
+                  }
                 }}
                 className="flex items-center gap-2 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-brand-blue/20"
               >
@@ -904,13 +912,16 @@ const LiveClasses = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Direct Link</p>
-                  <a
-                    href={`https://meet.ffmuc.net/${activeControlClass.jitsiRoomName || ''}`}
-                    target="_blank" rel="noreferrer"
-                    className="text-brand-blue hover:underline break-all"
-                  >
-                    meet.ffmuc.net/{activeControlClass.jitsiRoomName || '—'}
-                  </a>
+                  <div className="text-brand-blue truncate mt-0.5" title={`https://meet.jit.si/${activeControlClass.jitsiRoomName || ''}`}>
+                    <a 
+                      href={`https://meet.jit.si/${activeControlClass.jitsiRoomName || ''}`}
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="hover:underline"
+                    >
+                      meet.jit.si/{activeControlClass.jitsiRoomName || '—'}
+                    </a>
+                  </div>
                 </div>
                 <div>
                   <p className="text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Scheduled</p>
