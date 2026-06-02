@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Radio, Calendar, ExternalLink, Edit2, Trash2, Loader2, Video, Play, Users, Wifi, WifiOff, MonitorPlay } from 'lucide-react';
+import { Plus, Radio, Calendar, ExternalLink, Edit2, Trash2, Loader2, Video, Play, Users } from 'lucide-react';
 
-// Check if running inside Electron .exe
-const IS_ELECTRON = typeof window !== 'undefined' && window.electronAPI?.isElectron === true;
 import { liveClassService } from '../services/liveClassService';
 import { courseService } from '../services/courseService';
 import { chapterService } from '../services/chapterService';
@@ -48,14 +46,6 @@ const LiveClasses = () => {
   const [attendees, setAttendees] = useState([]);
   const [youtubeCreating, setYoutubeCreating] = useState(false);
 
-  // FFmpeg Streaming States (Electron only)
-  const [ffmpegStatus, setFfmpegStatus] = useState('idle'); // idle | starting | streaming | stopping | error
-  const [ffmpegLog, setFfmpegLog] = useState([]);
-  const [streamQuality, setStreamQuality] = useState('720p');
-  const [audioDevices, setAudioDevices] = useState([]);
-  const [selectedAudio, setSelectedAudio] = useState('');
-  const [showFfmpegLog, setShowFfmpegLog] = useState(false);
-  const logRef = useRef(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -325,7 +315,6 @@ const LiveClasses = () => {
     return () => unsubscribe();
   }, [activeControlClass]);
 
-  // Internal helper to create YouTube broadcast and update state
   const createYoutubeBroadcastForClass = async (classId) => {
     setYoutubeCreating(true);
     try {
@@ -349,95 +338,27 @@ const LiveClasses = () => {
         ...c, status: 'LIVE', youtubeVideoId: data.youtubeVideoId
       } : c));
 
-      // Auto-copy stream key to clipboard so admin can Ctrl+V in Jitsi
-      try {
-        await navigator.clipboard.writeText(data.youtubeStreamKey);
-      } catch (e) { /* clipboard not available */ }
-
       return data.youtubeStreamKey;
     } finally {
       setYoutubeCreating(false);
     }
   };
 
-  // ONE-CLICK launch: opens Jitsi + creates YouTube broadcast automatically
   const handleLaunchClass = async (cls) => {
     const room = cls.jitsiRoomName || `NextStepClass_${cls.id}`;
-    const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true`;
+    const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=true&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true&config.resolution=1080&config.constraints.video.height.ideal=1080&config.desktopSharingResolution.width=1920&config.desktopSharingResolution.height=1080`;
 
-    // 1. Open Jitsi immediately in default system browser to allow Google Login
-    if (IS_ELECTRON && window.electronAPI?.openExternal) {
-      window.electronAPI.openExternal(jitsiUrl);
-    } else {
-      window.open(jitsiUrl, '_blank');
-    }
-
-    // 2. Open control room (set with current class data, YouTube data comes async)
+    window.open(jitsiUrl, '_blank');
     setActiveControlClass(cls);
 
-    // 3. Auto-create YouTube broadcast in background (non-blocking)
     try {
-      const streamKey = await createYoutubeBroadcastForClass(cls.id);
-      // Stream key is now in clipboard — show notification in control room UI
-      // (state update already happened inside createYoutubeBroadcastForClass)
+      await createYoutubeBroadcastForClass(cls.id);
     } catch (err) {
       console.error('Auto YouTube broadcast failed:', err.message);
-      // Don't block the user — they can retry with the manual button
     }
   };
 
-  // ── FFmpeg Streaming Handlers (Electron only) ──────────────────
-  const handleStartFFmpegStream = async () => {
-    if (!IS_ELECTRON || !activeControlClass?.youtubeStreamKey) return;
-    setFfmpegStatus('starting');
-    setFfmpegLog([]);
 
-    // Listen for status updates
-    const unsubStatus = window.electronAPI.onStreamStatus((data) => {
-      setFfmpegStatus(data.status);
-    });
-    const unsubLog = window.electronAPI.onStreamLog((line) => {
-      setFfmpegLog(prev => {
-        const updated = [...prev, line].slice(-100); // Keep last 100 lines
-        setTimeout(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, 10);
-        return updated;
-      });
-    });
-
-    const result = await window.electronAPI.startStream(
-      activeControlClass.youtubeStreamKey,
-      streamQuality,
-      selectedAudio || undefined
-    );
-
-    if (!result.success) {
-      setFfmpegStatus('error');
-      setFfmpegLog(prev => [...prev, `ERROR: ${result.error}`]);
-      unsubStatus?.();
-      unsubLog?.();
-    }
-  };
-
-  const handleStopFFmpegStream = async () => {
-    if (!IS_ELECTRON) return;
-    setFfmpegStatus('stopping');
-    await window.electronAPI.stopStream();
-    setFfmpegStatus('idle');
-  };
-
-  // Load audio devices when control room opens (Electron only)
-  useEffect(() => {
-    if (!IS_ELECTRON || !activeControlClass) return;
-    window.electronAPI.listAudioDevices().then(devices => {
-      setAudioDevices(devices);
-      if (devices.length > 0 && !selectedAudio) setSelectedAudio(devices[0]);
-    }).catch(() => {});
-
-    // Restore stream status
-    window.electronAPI.getStreamStatus().then(({ status }) => setFfmpegStatus(status));
-  }, [activeControlClass]);
-
-  // Manual retry button (fallback if auto-creation failed)
   const handleStartYoutubeBroadcast = async () => {
     if (!activeControlClass) return;
     try {
@@ -466,9 +387,8 @@ const LiveClasses = () => {
 
       handleCloseControlRoom();
       fetchClasses();
-      // Prompt admin to also close Jitsi tab and end meeting for remaining participants
       setTimeout(() => {
-        alert('Class end ho gayi! ✅\n\nAbhi Jitsi tab mein jao → "End meeting for all" click karo — taaki jo bhi Jitsi mein hain unhe bhi remove kar sake.\n\n(Students ko app mein "Class Khatam Ho Gayi" screen automatically dikhegi.)');
+        alert('Class end ho gayi! ✅\n\nAbhi Jitsi tab mein jao → "End meeting for all" click karo — taaki jo bhi Jitsi mein hain unhe bhi remove kar sake.');
       }, 300);
     } catch (error) {
       alert("Class end karne mein problem: " + error.message);
@@ -477,7 +397,7 @@ const LiveClasses = () => {
     }
   };
 
-  const showToast = (text, type = 'success') => {
+  const showToast = (text) => {
     alert(text);
   };
 
@@ -851,16 +771,11 @@ const LiveClasses = () => {
               <p className="text-xs text-gray-400">{activeControlClass.subjectTitle || 'No Subject'} • {activeControlClass.chapterTitle || 'No Chapter'}</p>
             </div>
             <div className="flex gap-3 shrink-0 ml-4">
-              {/* Open class in new tab — admin becomes moderator as first joiner */}
               <button
                 onClick={() => {
                   const room = activeControlClass.jitsiRoomName || `NextStepClass_${activeControlClass.id}`;
-                  const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true`;
-                  if (IS_ELECTRON && window.electronAPI?.openExternal) {
-                    window.electronAPI.openExternal(jitsiUrl);
-                  } else {
-                    window.open(jitsiUrl, '_blank');
-                  }
+                  const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=true&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true&config.resolution=1080&config.constraints.video.height.ideal=1080&config.desktopSharingResolution.width=1920&config.desktopSharingResolution.height=1080`;
+                  window.open(jitsiUrl, '_blank');
                 }}
                 className="flex items-center gap-2 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-brand-blue/20"
               >
@@ -877,32 +792,7 @@ const LiveClasses = () => {
             </div>
           </div>
 
-          {/* Info Banner */}
-          {activeControlClass.youtubeStreamKey ? (
-            <div className="px-6 py-3 bg-yellow-950/60 border-b border-yellow-700/40 text-yellow-200 text-xs flex items-start gap-2 shrink-0">
-              <span className="text-base shrink-0 mt-0.5">🎯</span>
-              <span>
-                <strong>Stream key clipboard mein copy ho gaya!</strong> — Jitsi tab mein jao →{' '}
-                <code className="bg-yellow-900/50 px-1.5 py-0.5 rounded font-mono">...</code> button dabao →{' '}
-                <strong>Start live stream</strong> click karo → text box mein <kbd className="bg-yellow-900/50 px-1 rounded">Ctrl+V</kbd> dabao → Start karo.
-              </span>
-            </div>
-          ) : youtubeCreating ? (
-            <div className="px-6 py-3 bg-orange-950/50 border-b border-orange-700/40 text-orange-200 text-xs flex items-center gap-2 shrink-0">
-              <span className="animate-spin text-base">⏳</span>
-              <span>YouTube broadcast create ho raha hai... thoda ruko</span>
-            </div>
-          ) : (
-            <div className="px-6 py-3 bg-blue-950/50 border-b border-blue-900/40 text-blue-300 text-xs flex items-center gap-2 shrink-0">
-              <span className="text-base">💡</span>
-              <span>Jitsi tab mein jao — aap moderator ke taur pe join ho. Students apne aap join ho jaenge.</span>
-            </div>
-          )}
-
-          {/* Dashboard Grid */}
           <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
-
-            {/* Class Info Card */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
               <h4 className="font-bold text-sm text-gray-300 mb-3 flex items-center gap-2"><Play size={15} /> Class Info</h4>
               <div className="space-y-2.5 text-xs">
@@ -912,7 +802,7 @@ const LiveClasses = () => {
                 </div>
                 <div>
                   <p className="text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Direct Link</p>
-                  <div className="text-brand-blue truncate mt-0.5" title={`https://meet.jit.si/${activeControlClass.jitsiRoomName || ''}`}>
+                  <div className="text-brand-blue truncate mt-0.5">
                     <a 
                       href={`https://meet.jit.si/${activeControlClass.jitsiRoomName || ''}`}
                       target="_blank" 
@@ -937,111 +827,30 @@ const LiveClasses = () => {
                 </div>
               </div>
             </div>
-
             {/* YouTube Stream Card */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
               <h4 className="font-bold text-sm text-gray-300 mb-3 flex items-center gap-2"><Radio size={15} /> YouTube Live Stream</h4>
               {activeControlClass.youtubeVideoId ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
                     <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping inline-block"></span>
                     Broadcast Ready
                   </div>
 
-                  {/* FFmpeg Streaming Panel (Electron .exe only) */}
-                  {IS_ELECTRON && activeControlClass.youtubeStreamKey && (
-                    <div className="p-3 bg-gray-950 border border-gray-700 rounded-xl space-y-2.5">
-                      <p className="text-[10px] text-gray-400 uppercase font-bold flex items-center gap-1.5">
-                        <MonitorPlay size={12} /> Auto Screen Streaming (FFmpeg)
-                      </p>
-
-                      {/* Quality Selector */}
-                      <div className="flex gap-1.5">
-                        {['480p','720p','1080p'].map(q => (
-                          <button
-                            key={q}
-                            onClick={() => setStreamQuality(q)}
-                            className={`flex-1 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                              streamQuality === q
-                                ? 'bg-brand-blue border-brand-blue text-white'
-                                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
-                            }`}
-                          >{q}</button>
-                        ))}
-                      </div>
-
-                      {/* Audio Device Selector */}
-                      {audioDevices.length > 0 && (
-                        <select
-                          value={selectedAudio}
-                          onChange={e => setSelectedAudio(e.target.value)}
-                          className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-[10px] rounded-lg px-2 py-1.5 outline-none"
-                        >
-                          {audioDevices.map(d => <option key={d} value={`audio=${d}`}>{d}</option>)}
-                        </select>
-                      )}
-
-                      {/* Start/Stop Button */}
-                      {ffmpegStatus === 'idle' || ffmpegStatus === 'error' ? (
-                        <button
-                          onClick={handleStartFFmpegStream}
-                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5"
-                        >
-                          <Wifi size={13} /> Screen Stream Shuru Karo (YouTube)
-                        </button>
-                      ) : ffmpegStatus === 'starting' ? (
-                        <div className="w-full py-2 bg-yellow-600/30 border border-yellow-600/40 text-yellow-300 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5">
-                          <Loader2 size={13} className="animate-spin" /> Stream shuru ho raha hai...
-                        </div>
-                      ) : ffmpegStatus === 'streaming' ? (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px]">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping inline-block"></span>
-                            LIVE — Screen YouTube par stream ho rahi hai!
-                          </div>
-                          <button
-                            onClick={handleStopFFmpegStream}
-                            className="w-full py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1.5"
-                          >
-                            <WifiOff size={13} /> Stream Band Karo
-                          </button>
-                        </div>
-                      ) : ffmpegStatus === 'stopping' ? (
-                        <div className="w-full py-2 bg-gray-700 text-gray-300 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5">
-                          <Loader2 size={13} className="animate-spin" /> Band ho raha hai...
-                        </div>
-                      ) : null}
-
-                      {/* Log Toggle */}
-                      <button
-                        onClick={() => setShowFfmpegLog(p => !p)}
-                        className="text-[10px] text-gray-500 hover:text-gray-300 underline w-full text-left"
-                      >{showFfmpegLog ? 'Log chhupao' : 'FFmpeg log dekhein'}</button>
-                      {showFfmpegLog && (
-                        <div
-                          ref={logRef}
-                          className="h-24 overflow-y-auto bg-black rounded-lg p-2 font-mono text-[9px] text-green-400 space-y-0.5"
-                        >
-                          {ffmpegLog.length === 0
-                            ? <span className="text-gray-600">Log yahan dikhega...</span>
-                            : ffmpegLog.map((l, i) => <div key={i}>{l}</div>)
-                          }
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* For browser (non-Electron): show manual stream key */}
-                  {!IS_ELECTRON && activeControlClass.youtubeStreamKey && (
+                  {activeControlClass.youtubeStreamKey && (
                     <div className="p-3 bg-black/40 border border-yellow-500/30 rounded-xl">
                       <div className="flex items-center justify-between mb-1.5">
                         <p className="text-[10px] text-yellow-400 uppercase font-bold">Stream Key — Jitsi mein paste karo</p>
                         <button
-                          onClick={() => navigator.clipboard?.writeText(activeControlClass.youtubeStreamKey).then(() => alert('Copied!')).catch(() => {})}
-                          className="text-[10px] text-brand-blue font-bold hover:underline"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(activeControlClass.youtubeStreamKey)
+                              .then(() => alert('Stream key copied to clipboard!'))
+                              .catch(() => {});
+                          }}
+                          className="text-[10px] bg-brand-blue/20 hover:bg-brand-blue text-brand-blue hover:text-white px-2 py-1 rounded transition-colors font-bold"
                         >Copy</button>
                       </div>
-                      <p className="text-xs font-mono text-yellow-200 break-all select-all leading-relaxed">{activeControlClass.youtubeStreamKey}</p>
+                      <p className="text-xs font-mono text-yellow-200 break-all select-all leading-relaxed p-1.5 bg-black/50 rounded">{activeControlClass.youtubeStreamKey}</p>
                     </div>
                   )}
 
