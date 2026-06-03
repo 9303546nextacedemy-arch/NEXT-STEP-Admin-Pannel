@@ -68,6 +68,26 @@ export const liveClassService = {
       ...payload,
       createdAt: serverTimestamp()
     });
+
+    // Auto-send notification to the batch students
+    if (payload.courseId) {
+      try {
+        await addDoc(collection(db, "notifications"), {
+          title: `📅 Live Class Scheduled: ${payload.title || "New Class"}`,
+          message: payload.subjectTitle 
+            ? `${payload.subjectTitle}${payload.chapterTitle ? " — " + payload.chapterTitle : ""}`
+            : "A new live class has been scheduled. Check the Live section for details!",
+          type: "alert",
+          targetType: "courses",
+          targetCourseIds: [payload.courseId],
+          meta: { deepLink: "/live", kind: "live", courseId: payload.courseId },
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error("Auto-notification for live class failed:", e);
+      }
+    }
+
     return docRef.id;
   },
 

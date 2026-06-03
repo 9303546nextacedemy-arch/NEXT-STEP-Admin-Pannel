@@ -57,7 +57,8 @@ const LiveClasses = () => {
     dateTime: '',
     link: '',
     meetingType: 'jitsi', // 'jitsi' or 'manual'
-    jitsiRoomName: ''
+    jitsiRoomName: '',
+    broadcastToYoutube: false
   });
 
   useEffect(() => {
@@ -167,7 +168,7 @@ const LiveClasses = () => {
       }
       setIsModalOpen(false);
       setEditingId(null);
-      setFormData({ title: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', dateTime: '', link: '', meetingType: 'jitsi', jitsiRoomName: '' });
+      setFormData({ title: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', dateTime: '', link: '', meetingType: 'jitsi', jitsiRoomName: '', broadcastToYoutube: false });
       setNewChapterTitle('');
       setAddingChapter(false);
       setNewSubjectTitle('');
@@ -351,10 +352,32 @@ const LiveClasses = () => {
     window.open(jitsiUrl, '_blank');
     setActiveControlClass(cls);
 
-    try {
-      await createYoutubeBroadcastForClass(cls.id);
-    } catch (err) {
-      console.error('Auto YouTube broadcast failed:', err.message);
+    // Send "Live Now" notification to batch students
+    if (cls.courseId) {
+      try {
+        const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+        await addDoc(collection(db, 'notifications'), {
+          title: `🔴 Live Now: ${cls.title || 'Live Class'}`,
+          message: cls.subjectTitle
+            ? `${cls.subjectTitle}${cls.chapterTitle ? ' — ' + cls.chapterTitle : ''} is starting now! Join immediately.`
+            : 'A live class is starting now! Open the Live section to join.',
+          type: 'alert',
+          targetType: 'courses',
+          targetCourseIds: [cls.courseId],
+          meta: { deepLink: '/live', kind: 'live', courseId: cls.courseId, classId: cls.id },
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.error('Live Now notification failed:', e);
+      }
+    }
+
+    if (cls.broadcastToYoutube) {
+      try {
+        await createYoutubeBroadcastForClass(cls.id);
+      } catch (err) {
+        console.error('Auto YouTube broadcast failed:', err.message);
+      }
     }
   };
 
@@ -411,7 +434,7 @@ const LiveClasses = () => {
         <button 
           onClick={() => {
             setEditingId(null);
-            setFormData({ title: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', dateTime: '', link: '', meetingType: 'jitsi', jitsiRoomName: '' });
+            setFormData({ title: '', courseId: '', subjectId: '', subjectTitle: '', chapterId: '', chapterTitle: '', dateTime: '', link: '', meetingType: 'jitsi', jitsiRoomName: '', broadcastToYoutube: false });
             setNewChapterTitle('');
             setAddingChapter(false);
             setNewSubjectTitle('');
@@ -537,6 +560,7 @@ const LiveClasses = () => {
                             link: cls.link || '',
                             meetingType: cls.meetingType || 'manual',
                             jitsiRoomName: cls.jitsiRoomName || '',
+                            broadcastToYoutube: cls.broadcastToYoutube || false,
                           });
                           setNewChapterTitle('');
                           setAddingChapter(false);
@@ -723,10 +747,26 @@ const LiveClasses = () => {
                   onChange={(e) => setFormData({...formData, meetingType: e.target.value})}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue bg-white"
                 >
-                  <option value="jitsi">Jitsi Classroom (Interactive + YouTube Broadcast)</option>
+                  <option value="jitsi">Jitsi Classroom (Interactive)</option>
                   <option value="manual">Manual Link (Zoom, Google Meet, YouTube Live)</option>
                 </select>
               </div>
+              {formData.meetingType === 'jitsi' && (
+                <div>
+                  <label className="flex items-center gap-3 cursor-pointer p-3.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.broadcastToYoutube}
+                      onChange={(e) => setFormData({...formData, broadcastToYoutube: e.target.checked})}
+                      className="w-5 h-5 text-brand-blue rounded border-gray-300 focus:ring-brand-blue"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-900">Broadcast to YouTube</span>
+                      <span className="text-xs text-gray-500">Automatically stream this class to your connected YouTube channel</span>
+                    </div>
+                  </label>
+                </div>
+              )}
               {formData.meetingType === 'manual' ? (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Meeting Link</label>
