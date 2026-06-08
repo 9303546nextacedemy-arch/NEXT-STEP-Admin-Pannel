@@ -384,7 +384,7 @@ const LiveClasses = () => {
     setActiveControlClass(cls);
 
     // Send "Live Now" notification to batch students
-    if (cls.courseId) {
+    if (cls.courseId && cls.status !== 'LIVE') {
       try {
         const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
         await addDoc(collection(db, 'notifications'), {
