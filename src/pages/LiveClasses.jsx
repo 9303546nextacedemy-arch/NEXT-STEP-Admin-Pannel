@@ -151,7 +151,8 @@ const LiveClasses = () => {
         if (!dataToSave.jitsiRoomName) {
           dataToSave.jitsiRoomName = 'NextStep_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now().toString(36);
         }
-        dataToSave.link = `https://meet.jit.si/${dataToSave.jitsiRoomName}`;
+        const domain = jitsiSettings.domain || 'meet.jit.si';
+        dataToSave.link = `https://${domain}/${dataToSave.jitsiRoomName}`;
         if (!editingId) {
           dataToSave.status = 'SCHEDULED';
         }
@@ -347,7 +348,37 @@ const LiveClasses = () => {
 
   const handleLaunchClass = async (cls) => {
     const room = cls.jitsiRoomName || `NextStepClass_${cls.id}`;
-    const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=true&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true&config.resolution=1080&config.constraints.video.height.ideal=1080&config.desktopSharingResolution.width=1920&config.desktopSharingResolution.height=1080`;
+    const domain = jitsiSettings.domain || 'meet.jit.si';
+
+    const parts = [
+      'config.prejoinPageEnabled=false',
+      'config.startWithAudioMuted=false',
+      'config.disableDeepLinking=true',
+      'config.requireDisplayName=false',
+      'config.lobby.enabled=false',
+      'config.lobby.autoKnock=false',
+      'config.enableClosePage=false',
+      'interfaceConfig.HIDE_LOBBY_BUTTON=true',
+      'config.resolution=1080',
+      'config.constraints.video.height.ideal=1080',
+      'config.desktopSharingResolution.width=1920',
+      'config.desktopSharingResolution.height=1080'
+    ];
+
+    try {
+      const { auth } = await import('../lib/firebase');
+      if (auth.currentUser) {
+        const userInfo = {
+          displayName: auth.currentUser.displayName || 'Admin User',
+          email: auth.currentUser.email || ''
+        };
+        parts.push(`userInfo=${encodeURIComponent(JSON.stringify(userInfo))}`);
+      }
+    } catch (e) {
+      console.warn('Failed to load auth user info for Jitsi launch:', e);
+    }
+
+    const jitsiUrl = `https://${domain}/${room}#${parts.join('&')}`;
 
     window.open(jitsiUrl, '_blank');
     setActiveControlClass(cls);
@@ -378,6 +409,18 @@ const LiveClasses = () => {
       } catch (err) {
         console.error('Auto YouTube broadcast failed:', err.message);
       }
+    } else {
+      // If not broadcasting to YouTube, we still need to mark it as LIVE in Firestore
+      try {
+        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'liveClasses', cls.id), {
+          status: 'LIVE',
+          startedAt: serverTimestamp()
+        });
+        setClasses(prev => prev.map(c => c.id === cls.id ? { ...c, status: 'LIVE' } : c));
+      } catch (err) {
+        console.error('Failed to update class status to LIVE:', err);
+      }
     }
   };
 
@@ -397,15 +440,25 @@ const LiveClasses = () => {
 
     try {
       setLoading(true);
-      const response = await fetch("https://asia-south1-next-step-academy-5b9ab.cloudfunctions.net/endLiveBroadcast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ classId: activeControlClass.id })
-      });
+      
+      if (activeControlClass.broadcastToYoutube) {
+        const response = await fetch("https://asia-south1-next-step-academy-5b9ab.cloudfunctions.net/endLiveBroadcast", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ classId: activeControlClass.id })
+        });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to finalize broadcast');
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.error || 'Failed to finalize broadcast');
+        }
+      } else {
+        // Just update Firestore status if no broadcast
+        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'liveClasses', activeControlClass.id), {
+          status: 'ENDED',
+          endedAt: serverTimestamp()
+        });
       }
 
       handleCloseControlRoom();
@@ -525,7 +578,7 @@ const LiveClasses = () => {
                     </td>
                     <td className="px-6 py-4">
                       {cls.meetingType === 'jitsi' ? (
-                        cls.status === 'ENDED' ? (
+                        (cls.status === 'ENDED' || cls.status === 'COMPLETED') ? (
                           <span className="text-gray-400 text-xs font-bold uppercase bg-gray-100 px-2.5 py-1 rounded-full">Ended</span>
                         ) : (
                           <div className="flex gap-2">
@@ -812,9 +865,39 @@ const LiveClasses = () => {
             </div>
             <div className="flex gap-3 shrink-0 ml-4">
               <button
-                onClick={() => {
+                onClick={async () => {
                   const room = activeControlClass.jitsiRoomName || `NextStepClass_${activeControlClass.id}`;
-                  const jitsiUrl = `https://meet.jit.si/${room}#config.prejoinPageEnabled=true&config.startWithAudioMuted=false&config.disableDeepLinking=true&config.requireDisplayName=false&config.lobby.enabled=false&config.lobby.autoKnock=false&config.enableClosePage=false&interfaceConfig.HIDE_LOBBY_BUTTON=true&config.resolution=1080&config.constraints.video.height.ideal=1080&config.desktopSharingResolution.width=1920&config.desktopSharingResolution.height=1080`;
+                  const domain = jitsiSettings.domain || 'meet.jit.si';
+                  
+                  const parts = [
+                    'config.prejoinPageEnabled=false',
+                    'config.startWithAudioMuted=false',
+                    'config.disableDeepLinking=true',
+                    'config.requireDisplayName=false',
+                    'config.lobby.enabled=false',
+                    'config.lobby.autoKnock=false',
+                    'config.enableClosePage=false',
+                    'interfaceConfig.HIDE_LOBBY_BUTTON=true',
+                    'config.resolution=1080',
+                    'config.constraints.video.height.ideal=1080',
+                    'config.desktopSharingResolution.width=1920',
+                    'config.desktopSharingResolution.height=1080'
+                  ];
+
+                  try {
+                    const { auth } = await import('../lib/firebase');
+                    if (auth.currentUser) {
+                      const userInfo = {
+                        displayName: auth.currentUser.displayName || 'Admin User',
+                        email: auth.currentUser.email || ''
+                      };
+                      parts.push(`userInfo=${encodeURIComponent(JSON.stringify(userInfo))}`);
+                    }
+                  } catch (e) {
+                    console.warn('Failed to load auth user info for Jitsi launch:', e);
+                  }
+
+                  const jitsiUrl = `https://${domain}/${room}#${parts.join('&')}`;
                   window.open(jitsiUrl, '_blank');
                 }}
                 className="flex items-center gap-2 bg-brand-blue hover:bg-brand-blue/90 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-brand-blue/20"
@@ -861,7 +944,7 @@ const LiveClasses = () => {
                   <p className="text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Status</p>
                   <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                     activeControlClass.status === 'LIVE' ? 'bg-emerald-500/20 text-emerald-400' :
-                    activeControlClass.status === 'ENDED' ? 'bg-gray-700 text-gray-400' :
+                    (activeControlClass.status === 'ENDED' || activeControlClass.status === 'COMPLETED') ? 'bg-gray-700 text-gray-400' :
                     'bg-yellow-500/20 text-yellow-400'
                   }`}>{activeControlClass.status || 'SCHEDULED'}</span>
                 </div>

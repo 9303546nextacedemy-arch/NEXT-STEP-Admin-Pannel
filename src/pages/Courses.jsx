@@ -4,7 +4,66 @@ import { courseService } from '../services/courseService';
 import { teacherService } from '../services/teacherService';
 import { storageService } from '../services/storageService';
 import { categoryService } from '../services/categoryService';
+import { chapterService } from '../services/chapterService';
 import { normalizeSubjects, newSubjectId } from '../utils/courseSubjects';
+
+const AddChapterForm = ({ courseId, subject, onChapterAdded }) => {
+  const [title, setTitle] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleAdd = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const t = title.trim();
+    if (!t) return;
+    try {
+      setLoading(true);
+      await chapterService.addChapter({
+        courseId,
+        title: t,
+        subjectId: subject.id,
+        subjectTitle: subject.title
+      });
+      setTitle('');
+      onChapterAdded();
+    } catch (err) {
+      alert("Failed to add chapter: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      handleAdd();
+    }
+  };
+
+  return (
+    <div className="flex gap-2 mt-2.5">
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="New chapter name..."
+        className="flex-1 px-3 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-brand-blue bg-white"
+      />
+      <button
+        type="button"
+        disabled={loading}
+        onClick={handleAdd}
+        className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded-lg shrink-0 disabled:opacity-50 transition-colors"
+      >
+        {loading ? 'Adding...' : 'Add Chapter'}
+      </button>
+    </div>
+  );
+};
 
 const Courses = () => {
   const [viewMode, setViewMode] = useState('grid');
@@ -21,6 +80,7 @@ const Courses = () => {
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
   const [newCourseSubjectTitle, setNewCourseSubjectTitle] = useState('');
+  const [courseChapters, setCourseChapters] = useState([]);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -48,6 +108,23 @@ const Courses = () => {
     fetchCategories();
     fetchTeachers();
   }, []);
+
+  useEffect(() => {
+    if (isModalOpen && editingId) {
+      fetchCourseChapters(editingId);
+    } else {
+      setCourseChapters([]);
+    }
+  }, [isModalOpen, editingId]);
+
+  const fetchCourseChapters = async (courseId) => {
+    try {
+      const data = await chapterService.getChaptersByCourse(courseId);
+      setCourseChapters(data);
+    } catch (error) {
+      console.error("Error fetching chapters for course:", error);
+    }
+  };
 
   const fetchTeachers = async () => {
     try {
@@ -170,6 +247,46 @@ const Courses = () => {
       alert("Delete failed: " + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cleanUpReferencesToChapter = async (chapterId) => {
+    try {
+      const { collection, query, where, getDocs, writeBatch } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      
+      const collectionsToClean = ['notes', 'lectures', 'liveClasses'];
+      
+      for (const colName of collectionsToClean) {
+        const q = query(collection(db, colName), where('chapterId', '==', chapterId));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const batch = writeBatch(db);
+          snap.docs.forEach((docSnap) => {
+            batch.update(docSnap.ref, {
+              chapterId: '',
+              chapterTitle: ''
+            });
+          });
+          await batch.commit();
+          console.log(`Cleaned up chapter references in ${colName}`);
+        }
+      }
+    } catch (e) {
+      console.error("Failed reference cleanup for chapter:", e);
+    }
+  };
+
+  const handleDeleteChapter = async (chapterId) => {
+    if (!window.confirm("Are you sure you want to delete this chapter? This will delete it everywhere.")) return;
+    try {
+      await chapterService.deleteChapter(chapterId);
+      await cleanUpReferencesToChapter(chapterId);
+      if (editingId) {
+        fetchCourseChapters(editingId);
+      }
+    } catch (error) {
+      alert("Failed to delete chapter: " + error.message);
     }
   };
 
@@ -622,32 +739,85 @@ const Courses = () => {
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Subjects (this course / batch)</label>
-                    <p className="text-xs text-gray-500 mb-2">These appear when uploading lectures, notes, and live classes. Students filter materials by subject on the course screen.</p>
-                    <div className="space-y-2 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Subjects & Chapters *</label>
+                    <p className="text-xs text-gray-500 mb-2">Define subjects for this course. For each subject, you can add and manage chapters. Students filter learning materials by these subjects and chapters.</p>
+                    
+                    <div className="space-y-4 mb-4">
                       {(formData.subjects || []).map((s) => (
-                        <div key={s.id} className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
-                          <span className="flex-1 text-sm font-medium text-gray-800">{s.title}</span>
-                          <button
-                            type="button"
-                            onClick={() => setFormData((prev) => ({
-                              ...prev,
-                              subjects: (prev.subjects || []).filter((x) => x.id !== s.id),
-                            }))}
-                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"
-                            title="Remove"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                        <div key={s.id} className="bg-gray-50 border border-gray-200/60 rounded-2xl p-4 space-y-3">
+                          {/* Subject Header */}
+                          <div className="flex items-center justify-between pb-2.5 border-b border-gray-200">
+                            <span className="text-sm font-bold text-gray-900">{s.title}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to remove the subject "${s.title}"?`)) {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    subjects: (prev.subjects || []).filter((x) => x.id !== s.id),
+                                  }));
+                                }
+                              }}
+                              className="p-1.5 text-rose-500 hover:bg-rose-100 rounded-xl transition-colors"
+                              title="Remove Subject"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+
+                          {/* Chapters Area */}
+                          <div className="space-y-2.5 pl-2">
+                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Chapters ({courseChapters.filter((c) => c.subjectId === s.id).length})</h4>
+                            
+                            {/* Chapters List */}
+                            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1 custom-scrollbar">
+                              {courseChapters
+                                .filter((c) => c.subjectId === s.id)
+                                .map((ch) => (
+                                  <div key={ch.id} className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-gray-100 hover:border-gray-200 transition-all group">
+                                    <span className="text-xs font-semibold text-gray-700">{ch.title}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteChapter(ch.id)}
+                                      className="p-1 text-gray-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
+                                      title="Delete Chapter"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                ))}
+                              {courseChapters.filter((c) => c.subjectId === s.id).length === 0 && (
+                                <p className="text-[11px] text-gray-400 italic">No chapters added yet.</p>
+                              )}
+                            </div>
+
+                            {/* Add Chapter Form */}
+                            {editingId ? (
+                              <AddChapterForm
+                                courseId={editingId}
+                                subject={s}
+                                onChapterAdded={() => fetchCourseChapters(editingId)}
+                              />
+                            ) : (
+                              <p className="text-[11px] text-amber-600 font-medium bg-amber-50 border border-amber-100/50 px-2.5 py-1.5 rounded-lg">
+                                Save the course first to start adding chapters to this subject.
+                              </p>
+                            )}
+                          </div>
                         </div>
                       ))}
+                      {(formData.subjects || []).length === 0 && (
+                        <p className="text-sm text-gray-400 italic text-center py-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">No subjects defined. Add a subject below to get started.</p>
+                      )}
                     </div>
+
+                    {/* Add Subject Input */}
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={newCourseSubjectTitle}
                         onChange={(e) => setNewCourseSubjectTitle(e.target.value)}
-                        placeholder="Subject name, e.g. Physics"
+                        placeholder="New subject name, e.g. Mathematics"
                         className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-brand-blue text-sm"
                       />
                       <button
@@ -661,9 +831,9 @@ const Courses = () => {
                           }));
                           setNewCourseSubjectTitle('');
                         }}
-                        className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl shrink-0"
+                        className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold rounded-xl shrink-0 transition-colors"
                       >
-                        Add
+                        Add Subject
                       </button>
                     </div>
                   </div>
