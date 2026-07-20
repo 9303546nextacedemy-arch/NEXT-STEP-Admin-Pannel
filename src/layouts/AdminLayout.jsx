@@ -41,7 +41,7 @@ const AdminLayout = () => {
         </main>
         
         <footer className="p-6 text-center text-gray-500 text-sm border-t border-gray-100">
-          &copy; {new Date().getFullYear()} NEXTSTEP Academy. All rights reserved.
+          &copy; {new Date().getFullYear()} NEXTSTEP AI Solutions. All rights reserved.
         </footer>
       </div>
     </div>

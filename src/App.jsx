@@ -37,12 +37,12 @@ function App() {
 
     // If we're not running the Admin Panel, skip unnecessary Firebase admin checks
     if (!adminCheck) {
-      document.title = "NEXTSTEP Academy - One Step Always Forward";
+      document.title = "NEXTSTEP AI Solutions - One Step Always Forward";
       setAuthReady(true);
       return;
     }
 
-    document.title = "NEXTSTEP Academy - Admin Panel";
+    document.title = "NEXTSTEP AI Solutions - Admin Panel";
 
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {

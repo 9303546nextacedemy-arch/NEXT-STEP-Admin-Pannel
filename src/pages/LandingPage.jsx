@@ -220,7 +220,7 @@ const LandingPage = () => {
               </div>
               <div className="ml-3">
                 <span className="block font-black text-xl text-[#0B2C5F] tracking-tight leading-none font-['Outfit']">NEXTSTEP</span>
-                <span className="text-[10px] uppercase font-bold tracking-widest text-amber-500 leading-none">Academy</span>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-amber-500 leading-none">AI Solutions</span>
               </div>
             </div>
 
@@ -322,7 +322,7 @@ const LandingPage = () => {
               </div>
               
               <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-[#0B2C5F] font-['Outfit'] leading-tight">
-                NEXTSTEP <span className="bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">Academy</span>
+                NEXTSTEP <span className="bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent">AI Solutions</span>
               </h1>
               
               <p className="text-xl sm:text-2xl font-bold text-slate-600 leading-snug max-w-2xl mx-auto lg:mx-0">
@@ -421,7 +421,7 @@ const LandingPage = () => {
 
                   {/* Real Image Content */}
                   <div className="flex-1 w-full overflow-hidden bg-slate-950">
-                    <img src="/hero-phone-screenshot.jpg" alt="NEXTSTEP Academy App Dashboard" className="w-full h-full object-cover" />
+                    <img src="/hero-phone-screenshot.jpg" alt="NEXTSTEP AI Solutions App Dashboard" className="w-full h-full object-cover" />
                   </div>
 
                   {/* Simulated Home Indicator Bar */}
@@ -449,10 +449,10 @@ const LandingPage = () => {
           
           <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-3">
             <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Platform Overview</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">About NEXTSTEP Academy</h2>
+            <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">About NEXTSTEP AI Solutions</h2>
             <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full" />
             <p className="text-slate-500 font-medium text-base pt-2">
-              NEXTSTEP Academy is an advanced digital learning platform created specifically to help diploma students build strong technical and practical skills in modern technologies.
+              NEXTSTEP AI Solutions is an advanced digital learning platform created specifically to help diploma students build strong technical and practical skills in modern technologies.
             </p>
           </div>
 
@@ -545,7 +545,7 @@ const LandingPage = () => {
           
           <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-3">
             <span className="text-amber-400 font-bold uppercase tracking-widest text-xs">Excellence Guaranteed</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white font-['Outfit']">Why Choose NEXTSTEP Academy?</h2>
+            <h2 className="text-3xl sm:text-4xl font-black text-white font-['Outfit']">Why Choose NEXTSTEP AI Solutions?</h2>
             <div className="w-16 h-1 bg-amber-400 mx-auto rounded-full" />
             <p className="text-slate-300 font-medium text-sm pt-2">
               Our e-learning infrastructure is custom-built with multiple core advantages specifically aligned for competitive diploma syllabi.
@@ -851,7 +851,7 @@ const LandingPage = () => {
 
                   {/* Real Image Content */}
                   <div className="flex-1 w-full overflow-hidden bg-slate-950">
-                    <img src="/ecosystem-phone-screenshot.jpg" alt="NEXTSTEP Academy App Dashboard" className="w-full h-full object-cover" />
+                    <img src="/ecosystem-phone-screenshot.jpg" alt="NEXTSTEP AI Solutions App Dashboard" className="w-full h-full object-cover" />
                   </div>
 
                   {/* Simulated Home Indicator Bar */}
@@ -865,7 +865,7 @@ const LandingPage = () => {
             {/* Right Information Details */}
             <div className="lg:col-span-7 space-y-6 order-1 lg:order-2">
               <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Modern Ecosystem</span>
-              <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Learn Anywhere with NEXTSTEP Academy App</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">Learn Anywhere with NEXTSTEP AI Solutions App</h2>
               <div className="w-16 h-1 bg-amber-500 rounded-full" />
               
               <p className="text-slate-600 leading-relaxed font-semibold text-base">
@@ -1345,7 +1345,7 @@ const LandingPage = () => {
                     <CheckCircle2 size={36} />
                   </div>
                   <h3 className="font-extrabold text-2xl text-slate-900">Request Submitted!</h3>
-                  <p className="text-slate-500 text-sm max-w-sm">Thank you for contacting NEXTSTEP Academy. Our admissions officer will get in touch with you shortly via phone or email.</p>
+                  <p className="text-slate-500 text-sm max-w-sm">Thank you for contacting NEXTSTEP AI Solutions. Our admissions officer will get in touch with you shortly via phone or email.</p>
                 </div>
               ) : null}
 
@@ -1454,7 +1454,7 @@ const LandingPage = () => {
                 </div>
                 <div className="ml-3">
                   <span className="block font-black text-lg tracking-tight leading-none">NEXTSTEP</span>
-                  <span className="text-[9px] uppercase font-bold tracking-widest text-amber-400 leading-none">Academy</span>
+                  <span className="text-[9px] uppercase font-bold tracking-widest text-amber-400 leading-none">AI Solutions</span>
                 </div>
               </div>
               
@@ -1498,7 +1498,7 @@ const LandingPage = () => {
                   <span>Call support: 9168482314</span>
                 </a>
                 <span className="block text-[10px] text-slate-500 leading-relaxed font-bold">
-                  NEXTSTEP Academy - Empowering Diploma Students with Technology & Innovation
+                  NEXTSTEP AI Solutions - Empowering Diploma Students with Technology & Innovation
                 </span>
               </div>
             </div>
@@ -1506,7 +1506,7 @@ const LandingPage = () => {
           </div>
 
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-            <span>© {new Date().getFullYear()} NEXTSTEP Academy. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} NEXTSTEP AI Solutions. All rights reserved.</span>
             <div className="flex gap-4">
               <span className="font-bold text-amber-500">One Step Always Forward</span>
             </div>

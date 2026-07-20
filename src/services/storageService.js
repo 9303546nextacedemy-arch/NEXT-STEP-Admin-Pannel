@@ -33,7 +33,7 @@ async function uploadToFirebaseStorage(file, context) {
 
 export const storageService = {
   CLOUD_NAME: 'ddybawbzi',
-  UPLOAD_PRESET: 'NEXTSTEP Academy',
+  UPLOAD_PRESET: 'NEXTSTEP AI Solutions',
 
   /**
    * Notes & PDFs → Firebase Storage (reliable PDF bytes for in-app viewer).
