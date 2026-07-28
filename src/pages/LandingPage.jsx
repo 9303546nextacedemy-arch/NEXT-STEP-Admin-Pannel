@@ -326,11 +326,11 @@ const LandingPage = () => {
               </h1>
               
               <p className="text-xl sm:text-2xl font-bold text-slate-600 leading-snug max-w-2xl mx-auto lg:mx-0">
-                “One Step Always Forward”
+                “Learn • Build • Innovate”
               </p>
               
-              <p className="text-base sm:text-lg text-slate-500 leading-relaxed max-w-xl mx-auto lg:mx-0">
-                A highly secure, robust, and modern digital e-learning platform specially designed to empower diploma students with advanced concepts in Operating Systems, Machine Learning, and Cloud Infrastructures.
+              <p className="text-base sm:text-lg text-slate-500 leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium">
+                Transforming ideas into intelligent solutions. We are an innovative IT company and internship training center delivering advanced technology solutions, AI-driven development, and industry-oriented professional training.
               </p>
 
               {/* Highlights badges */}
@@ -448,29 +448,29 @@ const LandingPage = () => {
         >
           
           <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 space-y-3">
-            <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Platform Overview</span>
+            <span className="text-amber-500 font-bold uppercase tracking-widest text-xs">Who We Are</span>
             <h2 className="text-3xl sm:text-4xl font-black text-brand-blue font-['Outfit']">About NEXTSTEP AI Solutions</h2>
             <div className="w-16 h-1 bg-amber-500 mx-auto rounded-full" />
-            <p className="text-slate-500 font-medium text-base pt-2">
-              NEXTSTEP AI Solutions is an advanced digital learning platform created specifically to help diploma students build strong technical and practical skills in modern technologies.
+            <p className="text-slate-500 font-medium text-base pt-2 leading-relaxed">
+              We are an innovative IT company and training center bridging the gap between education and industry. By providing practical skills, live project experience, and digital solutions, we empower students, startups, and businesses to thrive in the modern tech ecosystem.
             </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left Box: Focus points */}
             <div className="space-y-6">
-              <h3 className="text-2xl font-extrabold text-brand-blue font-['Outfit']">Our Platform Focus</h3>
+              <h3 className="text-2xl font-extrabold text-brand-blue font-['Outfit']">Our Expertise & Services</h3>
               <p className="text-slate-600 leading-relaxed font-medium">
-                We believe in standardizing technical education. Instead of focusing only on written theory, our syllabus is strictly designed around building and deploying projects in modern digital architectures.
+                We specialize in delivering top-tier solutions and professional training programs tailored to current industry demands.
               </p>
               
               <div className="space-y-4">
                 {[
-                  { title: 'High-Quality Video Lectures', desc: 'Detailed modules recorded by specialized engineers explaining underlying concepts.' },
-                  { title: 'Practical Project-Based Learning', desc: 'Develop real applications in Operating Systems, ML models, and Cloud deployments.' },
-                  { title: 'Notes & Expert Study Material', desc: 'Quick reference cheat sheets, topic outlines, and detailed examination guides.' },
-                  { title: 'Live Online Classes', desc: 'Direct live sessions to interact, resolve doubts, and code alongside experienced mentors.' },
-                  { title: 'AI & Highly Technical Specializations', desc: 'Step-by-step algorithms designed cleanly to build student expertise.' }
+                  { title: 'AI & Machine Learning', desc: 'Advanced AI-driven models, Data Science, and robust Python development.' },
+                  { title: 'Software & Web Development', desc: 'End-to-end Web, Mobile App Development, and modern UI/UX Design.' },
+                  { title: 'Cloud & Database Solutions', desc: 'Scalable cloud infrastructure and secure database management architectures.' },
+                  { title: 'Real-Time & Final Year Projects', desc: 'Hands-on live project experience and comprehensive industrial internships.' },
+                  { title: 'IT Consulting & Support', desc: 'Technical workshops, continuous website maintenance, and client-focused support.' }
                 ].map((item, idx) => (
                   <div key={idx} className="flex gap-3">
                     <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
@@ -494,13 +494,9 @@ const LandingPage = () => {
                 </div>
                 <div className="space-y-2">
                   <h4 className="font-extrabold text-xl text-brand-blue font-['Outfit']">Our Mission</h4>
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-slate-600 font-bold list-disc pl-4">
-                    <li>Deliver quality technical education</li>
-                    <li>Help students become industry-ready</li>
-                    <li>Promote practical coding models</li>
-                    <li>Support innovation & creativity</li>
-                    <li>Mentorship through projects</li>
-                  </ul>
+                  <p className="text-sm text-slate-600 leading-relaxed font-semibold">
+                    To empower students, professionals, and businesses through quality education, practical training, innovative software development, and AI-driven technology solutions that create real-world impact.
+                  </p>
                 </div>
               </div>
 
@@ -512,7 +508,7 @@ const LandingPage = () => {
                 <div className="space-y-1">
                   <h4 className="font-extrabold text-xl text-brand-blue font-['Outfit']">Our Vision</h4>
                   <p className="text-sm text-slate-600 leading-relaxed font-semibold">
-                    To become a leading digital education platform that empowers diploma students with modern technology skills and practical knowledge for successful, high-paying engineering careers.
+                    To become a trusted leader in AI, software development, and technology training by building skilled professionals and delivering world-class digital solutions.
                   </p>
                 </div>
               </div>
@@ -520,8 +516,8 @@ const LandingPage = () => {
               {/* Goal Highlight */}
               <div className="p-6 rounded-3xl bg-brand-blue text-white shadow-xl flex items-center justify-between gap-4">
                 <div>
-                  <span className="text-[10px] text-amber-400 font-black uppercase tracking-widest block mb-1">Affordable & Secure</span>
-                  <p className="font-bold text-sm leading-snug">Provide high-quality and premium digital learning through a simple, robust and secure e-learning container.</p>
+                  <span className="text-[10px] text-amber-400 font-black uppercase tracking-widest block mb-1">Our Commitment</span>
+                  <p className="font-bold text-sm leading-snug">Delivering high-quality training and innovative software solutions while helping you embrace digital transformation.</p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0 text-amber-400">
                   <ShieldCheck size={20} />
@@ -548,21 +544,21 @@ const LandingPage = () => {
             <h2 className="text-3xl sm:text-4xl font-black text-white font-['Outfit']">Why Choose NEXTSTEP AI Solutions?</h2>
             <div className="w-16 h-1 bg-amber-400 mx-auto rounded-full" />
             <p className="text-slate-300 font-medium text-sm pt-2">
-              Our e-learning infrastructure is custom-built with multiple core advantages specifically aligned for competitive diploma syllabi.
+              We stand out through our commitment to innovation, quality, integrity, and customer satisfaction across all our services and training programs.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[
-              { icon: ShieldCheck, title: 'Secure Learning Platform', desc: 'Ultimate streaming protection prevent unauthorized downloads or credential sharing.' },
-              { icon: Smartphone, title: 'Mobile-Friendly Access', desc: 'Fully optimized layouts render beautifully on smartphones for learning on the go.' },
-              { icon: Video, title: 'Live Interactive Classes', desc: 'Direct live streams with expert instructors so you can debug and ask questions dynamically.' },
-              { icon: Award, title: 'AI & Technology Focused', desc: 'Curriculum designed strictly on modern algorithms, machine learning model layers and shell programming.' },
-              { icon: Layers, title: 'Project-Based Learning', desc: 'Every topic is bundled with a practical code assignment to translate theory into working skills.' },
-              { icon: Laptop, title: 'Simple & Modern UI', desc: 'Premium, clean interface with lightning-fast speeds ensures zero friction during studying.' },
-              { icon: Users, title: 'Expert Mentor Guidance', desc: 'One-on-one reviews and project oversight to ensure you code cleanly with industry best practices.' },
-              { icon: BookOpen, title: 'Notes & Study Materials', desc: 'Structured PDF guides, scheduling matrices, and exam reference blueprints.' },
-              { icon: Activity, title: 'Student Progress Tracking', desc: 'Real-time dashboard displays completed lectures, test schedules, and overall analytics.' }
+              { icon: BookOpen, title: 'Industry-Oriented Training', desc: 'Practical, hands-on learning designed to meet current market demands and standard methodologies.' },
+              { icon: Layers, title: 'Live Projects & Internships', desc: 'Gain real-world experience through live project development and earn valuable internship certificates.' },
+              { icon: Users, title: 'Expert Mentorship', desc: 'Learn directly from industry professionals with dedicated support and one-on-one career guidance.' },
+              { icon: Laptop, title: 'Innovative Solutions', desc: 'Client-focused development of robust web, mobile, and AI applications to drive business growth.' },
+              { icon: ShieldCheck, title: 'Affordable & Secure', desc: 'High-quality technical education and software solutions that fit your budget with uncompromising security.' },
+              { icon: Activity, title: 'Multi-Industry Expertise', desc: 'Serving education, healthcare, banking, e-commerce, manufacturing, and startups with tailored tech.' },
+              { icon: Award, title: 'AI & Technology Focused', desc: 'Curriculum built on modern AI algorithms, machine learning models, and cloud computing principles.' },
+              { icon: Video, title: 'Interactive Learning', desc: 'Direct live streams and continuous communication to resolve doubts and foster a collaborative environment.' },
+              { icon: MessageSquare, title: 'Dedicated Support', desc: 'Continuous website maintenance, IT consulting, and reliable client-first support channels.' }
             ].map((benefit, idx) => (
               <motion.div 
                 key={idx} 
@@ -1459,7 +1455,7 @@ const LandingPage = () => {
               </div>
               
               <p className="text-slate-400 text-xs leading-relaxed font-semibold">
-                “One Step Always Forward”
+                “Learn • Build • Innovate”
               </p>
               
               <p className="text-slate-400 text-xs leading-relaxed">
@@ -1508,7 +1504,7 @@ const LandingPage = () => {
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
             <span>© {new Date().getFullYear()} NEXTSTEP AI Solutions. All rights reserved.</span>
             <div className="flex gap-4">
-              <span className="font-bold text-amber-500">One Step Always Forward</span>
+              <span className="font-bold text-amber-500">Learn • Build • Innovate</span>
             </div>
           </div>
 
